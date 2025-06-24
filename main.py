@@ -81,9 +81,10 @@ def scan():
 
 def main():
     while True:
-        print(f"[{datetime.now()}] Bot is running")
-        scan()
-        time.sleep(SCAN_INTERVAL)
+        now = datetime.now() # ✅ Indented 4 spaces
+        print("Bot is running") # ✅ Indented 4 spaces
+        scan() # ✅ This triggers scanning
+        time.sleep(60) # ✅ Wait 60 seconds between loops
 
 if __name__ == "__main__":
     main()
