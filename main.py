@@ -81,12 +81,9 @@ def scan():
 
 def main():
     while True:
-    now = datetime.now()
-    print(f"[{now}] Scanning...")
-    # TEMPORARY TEST ALERT
-    send_telegram_alert("✅ TEST ALERT: Bot is running properly on Railway.")
-
-    time.sleep(60)
+    now = datetime.now()         # ✅ This must be indented
+    print("Bot is running")      # ✅ Same indentation level
+    time.sleep(60)               # ✅ Same here
     
 if __name__ == "__main__":
     main()
