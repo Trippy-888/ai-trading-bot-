@@ -9,7 +9,7 @@ import requests
 from datetime import datetime
 
 # === ENVIRONMENT VARIABLES ===
-FMP_API_KEY = os.getenv("54kgcuCJpN9Yfwqb50Nx7e65UhuX1571")
+FMP_API_KEY = "54kgcuCJpN9Yfwqb50Nx7e65UhuX1571"
 TELEGRAM_BOT_TOKEN = os.getenv("7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0")
 TELEGRAM_CHAT_ID = os.getenv("8006606779")
 
