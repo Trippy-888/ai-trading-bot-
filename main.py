@@ -81,10 +81,11 @@ def scan():
 
 def main():
     while True:
-        now = datetime.now() # ✅ Indented 4 spaces
-        print("Bot is running") # ✅ Indented 4 spaces
-        scan() # ✅ This triggers scanning
-        time.sleep(60) # ✅ Wait 60 seconds between loops
+        now = datetime.now()
+        print("Bot is running")
+        send_telegram("✅ Bot is LIVE and scanning...") # Force a test alert
+        scan()
+        time.sleep(60)
 
 if __name__ == "__main__":
     main()
