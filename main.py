@@ -79,13 +79,11 @@ def scan():
         elif check_memory_reentry(asset, price):
             send_telegram(f"🔁 Memory Re-entry on {asset} at {price}")
 
-
 def main():
-    
-while True:
-    now = datetime.now()             # ✅ current time
-    print(f"[{now}] Bot is running") # ✅ status message
-    time.sleep(60)                   # ✅ wait 60 seconds
-    
+    while True:
+        print(f"[{datetime.datetime.now()}] Bot is running")
+        scan()
+        time.sleep(SCAN_INTERVAL)
+
 if __name__ == "__main__":
     main()
