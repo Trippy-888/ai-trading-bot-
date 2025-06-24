@@ -81,7 +81,7 @@ def scan():
 
 def main():
     while True:
-        print(f"[{datetime.datetime.now()}] Bot is running")
+        print(f"[{datetime.now()}] Bot is running")
         scan()
         time.sleep(SCAN_INTERVAL)
 
