@@ -81,9 +81,18 @@ def scan():
 
 def main():
     while True:
-        print(f"[{datetime.datetime.now()}] Scanning...")
-        scan()
-        time.sleep(SCAN_INTERVAL)
+    now = datetime.now()
+    print(f"[{now}] Scanning...")
+
+    # TEMPORARY TEST ALERT
+    send_telegram_alert("✅ TEST ALERT: Bot is running properly on Railway.")
+
+    time.sleep(60)
+    
+#while True:
+       # print(f"[{datetime.datetime.now()}] Scanning...")
+        #scan()
+        #time.sleep(SCAN_INTERVAL)
 
 
 if __name__ == "__main__":
