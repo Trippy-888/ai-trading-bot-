@@ -4,6 +4,7 @@ import requests
 import time
 import datetime
 from collections import deque
+from datetime import datetime
 
 # === CONFIGURATION ===
 ASSETS = [
@@ -80,10 +81,11 @@ def scan():
 
 
 def main():
-    while True:
-    now = datetime.now()         # ✅ This must be indented
-    print("Bot is running")      # ✅ Same indentation level
-    time.sleep(60)               # ✅ Same here
+    
+while True:
+    now = datetime.now()             # ✅ current time
+    print(f"[{now}] Bot is running") # ✅ status message
+    time.sleep(60)                   # ✅ wait 60 seconds
     
 if __name__ == "__main__":
     main()
