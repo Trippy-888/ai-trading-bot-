@@ -6,7 +6,7 @@ import requests import json import time import statistics import logging from da
 
 === CONFIG ===
 
-ASSETS = ["XAU/USD", "SILVER", "GBP/USD", "GBP/JPY", "EUR/USD", "USD/JPY", "US30", "CRUDE OIL"] FMP_API_KEY = "your_fmp_key_here" TELEGRAM_TOKEN = "your_telegram_token_here" TELEGRAM_CHAT_ID = "your_telegram_chat_id_here" TIMEFRAME = "1min" RR_THRESHOLD = 2.2 DELAY = 60 SCORE_MIN = 85 GHOST_ZONE_DECAY = 0.3
+ASSETS = ["XAU/USD", "SILVER", "GBP/USD", "GBP/JPY", "EUR/USD", "USD/JPY", "US30", "CRUDE OIL"] FMP_API_KEY = "54kgcuCJpN9Yfwqb50Nx7e65UhuX1571" TELEGRAM_TOKEN = "7403427584:AAF5F0sZ4w5non_" TELEGRAM_CHAT_ID = "8006606779" TIMEFRAME = "1min" RR_THRESHOLD = 2.2 DELAY = 60 SCORE_MIN = 85 GHOST_ZONE_DECAY = 0.3
 
 === MEMORY ===
 
