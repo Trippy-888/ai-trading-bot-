@@ -11,15 +11,8 @@ import numpy as np
 FMP_API_KEY = '54kgcuCJpN9Yfwqb50Nx7e65UhuX1571'
 TELEGRAM_BOT_TOKEN = '7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0'
 TELEGRAM_CHAT_ID = '8006606779'
-ASSETS = list(set([
-    'XAUUSD', 'XAGUSD', 'NAS100', 'US30',
-    'GBPJPY', 'GBPUSD', 'EURUSD', 'USDJPY',
-    'AUDUSD', 'NZDUSD', 'USDCAD', 'CRUDE',
-    'COPPER', 'USDZAR', 'USDMXN'
-]))[:15]
-
+ASSETS = ['XAUUSD', 'NAS100', 'GBPJPY', 'GBPUSD']
 TIMEFRAME = '1min'  # For ultra scalping
-
 
 # === HELPER FUNCTIONS ===
 def get_fmp_candles(symbol, interval='1min', limit=100):
@@ -53,10 +46,6 @@ def trigger_long(symbol, entry, sl, tp):
 def trigger_short(symbol, entry, sl, tp):
     send_telegram_alert(f"\n🔴 SHORT ENTRY - {symbol}\nENTRY: {entry}\nSL: {sl}\nTP: {tp}\nReason: Spoof + Trap + OB Mid")
 
-print("✅ Debug Mode Active:")
-print(f"Total assets in ASSETS list: {len(ASSETS)}")
-print(f"ASSETS: {ASSETS}")
-
 # === MAIN LOOP ===
 while True:
     for symbol in ASSETS:
@@ -79,8 +68,6 @@ while True:
                 trigger_long(symbol, entry, entry - 2.5, entry + 6.0)
 
         except Exception as e:
-           print(f"Error for {symbol}: {e}")
-
-    print(f"🔁 Scanning {symbol} at {datetime.datetime.now()}")
+            print(f"Error for {symbol}: {e}")
 
     time.sleep(60)
