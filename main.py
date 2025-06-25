@@ -8,7 +8,7 @@ from statistics import mean
 import numpy as np
 
 print("🚀 Boot sequence started: LSOB engine waking up...")
-
+print("🚀 You got scamed haha...")
 # === USER CONFIG ===
 FMP_API_KEY = '54kgcuCJpN9Yfwqb50Nx7e65UhuX1571'
 TELEGRAM_BOT_TOKEN = '7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0'
