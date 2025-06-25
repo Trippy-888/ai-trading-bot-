@@ -17,7 +17,7 @@ ASSETS = list(set([
     'AUDUSD', 'NZDUSD', 'USDCAD', 'CRUDE',
     'COPPER', 'USDZAR', 'USDMXN'
 ]))[:15]
-]
+
 TIMEFRAME = '1min'  # For ultra scalping
 
 
