@@ -25,8 +25,7 @@ TIMEFRAME = '1min'
 
 # === Boot Log ===
 print("Boot sequence started: LSOB engine waking up...")
-print(f"\ud83d\udee0\ufe0f Debug: Starting scan loop with {len(ASSETS)} assets\n")
-
+print(f"Debug: Starting scan loop with {len(ASSETS)} assets\n")
 # === Utility Functions ===
 def get_fmp_candles(symbol, interval='1min', limit=100):
     url = f'https://financialmodelingprep.com/api/v3/historical-chart/{interval}/{symbol}?apikey={FMP_API_KEY}'
