@@ -53,6 +53,10 @@ def trigger_long(symbol, entry, sl, tp):
 def trigger_short(symbol, entry, sl, tp):
     send_telegram_alert(f"\n🔴 SHORT ENTRY - {symbol}\nENTRY: {entry}\nSL: {sl}\nTP: {tp}\nReason: Spoof + Trap + OB Mid")
 
+print("✅ Debug Mode Active:")
+print(f"Total assets in ASSETS list: {len(ASSETS)}")
+print(f"ASSETS: {ASSETS}")
+
 # === MAIN LOOP ===
 while True:
     for symbol in ASSETS:
@@ -75,6 +79,8 @@ while True:
                 trigger_long(symbol, entry, entry - 2.5, entry + 6.0)
 
         except Exception as e:
-            print(f"Error for {symbol}: {e}")
+           print(f"Error for {symbol}: {e}")
+
+    print(f"🔁 Scanning {symbol} at {datetime.datetime.now()}")
 
     time.sleep(60)
