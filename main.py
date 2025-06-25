@@ -24,7 +24,7 @@ ASSETS = [
 TIMEFRAME = '1min'
 
 # === Boot Log ===
-print("\ud83d\ude80 Boot sequence started: LSOB engine waking up...")
+print("🚀 Boot sequence started: LSOB engine waking up...")
 print(f"\ud83d\udee0\ufe0f Debug: Starting scan loop with {len(ASSETS)} assets\n")
 
 # === Utility Functions ===
