@@ -80,7 +80,7 @@ def trigger_short(symbol, entry, sl, tp):
 
 # === Sniper Loop ===
 while True:
-    print(f"\ud83e\uddd0 Scan Start - {datetime.datetime.now()} | Total Assets: {len(ASSETS)}\n")
+    print(f"Scan Start - {datetime.datetime.now()} | Total Assets: {len(ASSETS)}\n")
     for symbol in ASSETS:
         print(f"\uD83D\uDD01 Scanning {symbol} at {datetime.datetime.now()}")
         data = get_fmp_candles(symbol, interval=TIMEFRAME)
