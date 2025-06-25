@@ -13,7 +13,15 @@ print(f"🛠️ Debug: Starting scan loop with {len(ASSETS)} assets")
 FMP_API_KEY = '54kgcuCJpN9Yfwqb50Nx7e65UhuX1571'
 TELEGRAM_BOT_TOKEN = '7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0'
 TELEGRAM_CHAT_ID = '8006606779'
-ASSETS = ['XAUUSD', 'NAS100', 'GBPJPY', 'GBPUSD']
+# === Asset List ===
+ASSETS = [
+    'XAUUSD', 'XAGUSD', 'NAS100', 'US30',
+    'GBPJPY', 'GBPUSD', 'EURUSD', 'USDJPY',
+    'AUDUSD', 'NZDUSD', 'USDCAD', 'CRUDE',
+    'COPPER', 'USDZAR', 'USDMXN'
+]
+
+print(f"🛠️ Debug: Starting scan loop with {len(ASSETS)} assets")
 TIMEFRAME = '1min'  # For ultra scalping
 
 # === HELPER FUNCTIONS ===
@@ -51,7 +59,6 @@ def trigger_short(symbol, entry, sl, tp):
 # === MAIN LOOP ===
 while True:
     for symbol in ASSETS:
-        print(f"🔁 Scanning {symbol} at {datetime.datetime.now()}")
         try:
             data = get_fmp_candles(symbol, interval=TIMEFRAME)
             if len(data) < 10:
