@@ -1,86 +1,78 @@
+# LSOB-Sim Core Engine
+# Author: ShadowAI | Purpose: Institutional spoof/trap simulation bot with sniper logic
+
 import requests
 import time
-from datetime import datetime
-import pandas as pd
-import ta
+import datetime
+from statistics import mean
+import numpy as np
 
-TELEGRAM_BOT_TOKEN = "7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0"
-TELEGRAM_CHAT_ID = "8006606779"
-API_KEY = "54kgcuCJpN9Yfwqb50Nx7e65UhuX1571"
-
+# === USER CONFIG ===
+FMP_API_KEY = '54kgcuCJpN9Yfwqb50Nx7e65UhuX1571'
+TELEGRAM_BOT_TOKEN = '7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0'
+TELEGRAM_CHAT_ID = '8006606779'
 ASSETS = [
-    "XAU/USD", "NAS100", "GBP/JPY", "GBP/USD",
-    "BTC/USD", "AUD/USD", "CAD/USD", "NZD/USD",
-    "Crude Oil", "Silver", "Copper", "US30",
-    "USD/INR", "EUR/USD", "USD/JPY", "ETH/USD", "XAG/USD"
+    'XAUUSD', 'XAGUSD', 'NAS100', 'US30', 'GBPJPY', 'GBPUSD',
+    'EURUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD',
+    'CRUDE', 'COPPER', 'USDZAR', 'USDMXN'
 ]
-
-SCAN_INTERVAL = 60  # seconds
-
-
-def send_telegram(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message
-    }
-    try:
-        requests.post(url, data=payload)
-    except Exception as e:
-        print(f"Telegram Error: {e}")
+TIMEFRAME = '1min'  # For ultra scalping
 
 
-def fetch_price_data(asset):
-    asset_clean = asset.replace("/", "").replace(" ", "")
-    url = f"https://api.twelvedata.com/time_series?symbol={asset_clean}&interval=1min&apikey={API_KEY}&outputsize=30"
-    try:
-        response = requests.get(url)
-        data = response.json()
-        if "values" not in data:
-            return None
-        df = pd.DataFrame(data["values"])
-        df["datetime"] = pd.to_datetime(df["datetime"])
-        df = df.sort_values("datetime")
-        df.set_index("datetime", inplace=True)
-        df = df.astype(float)
-        return df
-    except Exception as e:
-        print(f"Error fetching {asset}: {e}")
-        return None
+# === HELPER FUNCTIONS ===
+def get_fmp_candles(symbol, interval='1min', limit=100):
+    url = f'https://financialmodelingprep.com/api/v3/historical-chart/{interval}/{symbol}?apikey={FMP_API_KEY}'
+    data = requests.get(url).json()
+    return data[:limit]
 
+def send_telegram_alert(msg):
+    url = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage'
+    requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg})
 
-def analyze(asset, df):
-    df["ema"] = ta.trend.ema_indicator(df["close"], window=14).ema_indicator()
-    df["rsi"] = ta.momentum.rsi(df["close"], window=14)
+def is_spoof_wall(candles):
+    latest = candles[0]
+    body = abs(float(latest['close']) - float(latest['open']))
+    wick = abs(float(latest['high']) - float(latest['low']))
+    vol = float(latest['volume'])
+    return body < (0.25 * wick) and vol > mean([float(c['volume']) for c in candles[1:6]]) * 1.5
 
-    latest = df.iloc[-1]
-    previous = df.iloc[-2]
+def is_absorption(candles):
+    vols = [float(c['volume']) for c in candles[:5]]
+    closes = [float(c['close']) for c in candles[:5]]
+    return vols == sorted(vols) and max(closes) - min(closes) < 0.2
 
-    entry_price = latest["close"]
-    signal = None
+def detect_void_zone(candles):
+    wicks = [abs(float(c['high']) - float(c['low'])) for c in candles]
+    return np.percentile(wicks, 90) > 2.5 and candles[0]['close'] < candles[2]['close']
 
-    if previous["rsi"] > 70 and latest["close"] < latest["ema"]:
-        signal = "SELL"
-    elif previous["rsi"] < 30 and latest["close"] > latest["ema"]:
-        signal = "BUY"
+def trigger_long(symbol, entry, sl, tp):
+    send_telegram_alert(f"\n🟢 LONG ENTRY - {symbol}\nENTRY: {entry}\nSL: {sl}\nTP: {tp}\nReason: Trap + Absorption + Void")
 
-    if signal:
-        sl = round(entry_price * (1.003 if signal == "BUY" else 0.997), 2)
-        tp = round(entry_price * (0.997 if signal == "BUY" else 1.003), 2)
-        send_telegram(
-            f"🚨 {signal} Signal\nAsset: {asset}\nEntry: {round(entry_price, 2)}\nSL: {sl}\nTP: {tp}\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        )
+def trigger_short(symbol, entry, sl, tp):
+    send_telegram_alert(f"\n🔴 SHORT ENTRY - {symbol}\nENTRY: {entry}\nSL: {sl}\nTP: {tp}\nReason: Spoof + Trap + OB Mid")
 
+# === MAIN LOOP ===
+while True:
+    for symbol in ASSETS:
+        try:
+            data = get_fmp_candles(symbol, interval=TIMEFRAME)
+            if len(data) < 10:
+                continue
 
-def main():
-    while True:
-        print(f"[{datetime.now()}] 🔍 Scanning {len(ASSETS)} assets...")
-        for asset in ASSETS:
-            df = fetch_price_data(asset)
-            if df is not None and not df.empty:
-                analyze(asset, df)
-        time.sleep(SCAN_INTERVAL)
+            spoof = is_spoof_wall(data)
+            absorp = is_absorption(data)
+            void = detect_void_zone(data)
 
+            entry = float(data[0]['close'])
+            sl = entry + 2.5
+            tp = entry - 6.0
 
-if __name__ == "__main__":
-    main()
+            if spoof and void:
+                trigger_short(symbol, entry, sl, tp)
+            elif absorp and void:
+                trigger_long(symbol, entry, entry - 2.5, entry + 6.0)
+
+        except Exception as e:
+            print(f"Error for {symbol}: {e}")
+
+    time.sleep(60)
