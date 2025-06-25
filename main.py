@@ -1,9 +1,8 @@
 import requests
-from datetime import datetime
 import time
-import ta
-import pandas as pd
-import random
+from datetime import datetime 
+import pytz
+import json
 
 # --- Configuration ---
 
