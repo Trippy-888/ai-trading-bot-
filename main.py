@@ -1,142 +1,86 @@
 import requests
 import time
-from datetime import datetime 
-import pytz
-import json
+from datetime import datetime
+import pandas as pd
+import ta
 
-# --- Configuration ---
-
-FMP_API_KEY = "54kgcuCJpN9Yfwqb50Nx7e65UhuX1571"
-TELEGRAM_TOKEN = "7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0"
+TELEGRAM_BOT_TOKEN = "7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0"
 TELEGRAM_CHAT_ID = "8006606779"
-ASSETS = ["XAUUSD", "XAGUSD", "GBPJPY", "USDINR", "NAS100", "US30", "AUDUSD", "EURJPY", "BTCUSD"]
-SCAN_INTERVAL = 60  # in seconds
-LOG_FILE = "sniper_bot_log.txt"
-AGGRESSIVE_MODE = True
+API_KEY = "54kgcuCJpN9Yfwqb50Nx7e65UhuX1571"
 
-# --- Telegram Alert ---
+ASSETS = [
+    "XAU/USD", "NAS100", "GBP/JPY", "GBP/USD",
+    "BTC/USD", "AUD/USD", "CAD/USD", "NZD/USD",
+    "Crude Oil", "Silver", "Copper", "US30",
+    "USD/INR", "EUR/USD", "USD/JPY", "ETH/USD", "XAG/USD"
+]
 
-def send_telegram_alert(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}
+SCAN_INTERVAL = 60  # seconds
+
+
+def send_telegram(message):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message
+    }
     try:
-        requests.post(url, data=data)
+        requests.post(url, data=payload)
     except Exception as e:
-        print(f"[Telegram Error] {e}")
+        print(f"Telegram Error: {e}")
 
-# --- Logging ---
 
-def log_event(text):
-    with open(LOG_FILE, "a") as file:
-        file.write(f"[{datetime.now()}] {text}\n")
-
-# --- Fetch Candle Data ---
-
-def fetch_ohlcv(asset):
+def fetch_price_data(asset):
+    asset_clean = asset.replace("/", "").replace(" ", "")
+    url = f"https://api.twelvedata.com/time_series?symbol={asset_clean}&interval=1min&apikey={API_KEY}&outputsize=30"
     try:
-        url = f"https://financialmodelingprep.com/api/v3/historical-chart/1min/{asset}?apikey={FMP_API_KEY}"
         response = requests.get(url)
         data = response.json()
-        df = pd.DataFrame(data)
-        df = df.rename(columns={"close": "Close", "high": "High", "low": "Low", "open": "Open", "volume": "Volume"})
-        df = df[["Open", "High", "Low", "Close", "Volume"]].astype(float)
-        return df[::-1]  # Reverse to ascending order
+        if "values" not in data:
+            return None
+        df = pd.DataFrame(data["values"])
+        df["datetime"] = pd.to_datetime(df["datetime"])
+        df = df.sort_values("datetime")
+        df.set_index("datetime", inplace=True)
+        df = df.astype(float)
+        return df
     except Exception as e:
-        log_event(f"[ERROR] Failed to fetch OHLCV for {asset}: {e}")
+        print(f"Error fetching {asset}: {e}")
         return None
 
-# --- Indicators ---
 
-def check_rsi(df):
-    rsi = ta.momentum.RSIIndicator(df["Close"]).rsi()
-    return rsi.iloc[-1] < 30 or rsi.iloc[-1] > 70
+def analyze(asset, df):
+    df["ema"] = ta.trend.ema_indicator(df["close"], window=14).ema_indicator()
+    df["rsi"] = ta.momentum.rsi(df["close"], window=14)
 
-def check_macd(df):
-    macd = ta.trend.MACD(df["Close"])
-    return macd.macd_diff().iloc[-1] > 0
+    latest = df.iloc[-1]
+    previous = df.iloc[-2]
 
-def check_obv(df):
-    obv = ta.volume.OnBalanceVolumeIndicator(df["Close"], df["Volume"]).on_balance_volume()
-    return obv.iloc[-1] > obv.iloc[-2]
+    entry_price = latest["close"]
+    signal = None
 
-def check_bbands(df):
-    bb = ta.volatility.BollingerBands(df["Close"])
-    return df["Close"].iloc[-1] < bb.bollinger_lband().iloc[-1] or df["Close"].iloc[-1] > bb.bollinger_hband().iloc[-1]
+    if previous["rsi"] > 70 and latest["close"] < latest["ema"]:
+        signal = "SELL"
+    elif previous["rsi"] < 30 and latest["close"] > latest["ema"]:
+        signal = "BUY"
 
-def check_choc():
-    return random.choice([True, True, False])  # Simulated CHoCH
+    if signal:
+        sl = round(entry_price * (1.003 if signal == "BUY" else 0.997), 2)
+        tp = round(entry_price * (0.997 if signal == "BUY" else 1.003), 2)
+        send_telegram(
+            f"🚨 {signal} Signal\nAsset: {asset}\nEntry: {round(entry_price, 2)}\nSL: {sl}\nTP: {tp}\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
 
-def check_fvg():
-    return random.choice([True, False])
 
-def check_orderblock():
-    return random.choice([True, False])
-
-def check_volume_spike(df):
-    return df["Volume"].iloc[-1] > df["Volume"].mean() * 1.5
-
-def check_mtf_trend():
-    return random.choice([True, True, False])
-
-# --- Scoring ---
-
-def get_confluence_score(df):
-    checks = [
-        check_rsi(df),
-        check_macd(df),
-        check_obv(df),
-        check_bbands(df),
-        check_volume_spike(df),
-        check_choc(),
-        check_fvg(),
-        check_orderblock(),
-        check_mtf_trend(),
-    ]
-    return sum(checks)
-
-# --- Signal Validator ---
-
-def validate_entry(df):
-    score = get_confluence_score(df)
-    threshold = 5 if AGGRESSIVE_MODE else 7
-    return score >= threshold, score
-
-# --- Main Scanner ---
-
-def scanner():
-    send_telegram_alert("🚀 Tier-65+ ELITE SNIPER BOT ENGAGED \nScanning markets for ultra-high accuracy trades...")
+def main():
     while True:
-        log_event("[SCAN STARTED]")
-        print(f"[SCAN] {datetime.now()} Starting scan...")
-
+        print(f"[{datetime.now()}] 🔍 Scanning {len(ASSETS)} assets...")
         for asset in ASSETS:
-            df = fetch_ohlcv(asset)
-            if df is None or len(df) < 20:
-                continue
-
-            is_valid, score = validate_entry(df)
-            if is_valid:
-                price = df["Close"].iloc[-1]
-                message = (
-                    f"🚨 *Elite Entry Signal* 🚨\n"
-                    f"*Asset:* `{asset}`\n"
-                    f"*Price:* `{price}`\n"
-                    f"*Time:* `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n"
-                    f"*Confidence:* `{score}/9`\n"
-                    f"*Bot Tier:* 65+ Elite Sniper AI"
-                )
-                send_telegram_alert(message)
-                log_event(f"[ALERT SENT] {asset} @ {price} | Score: {score}")
-                print(f"[ALERT] Trade found on {asset}")
-            else:
-                log_event(f"[SKIPPED] {asset} | Score: {score}")
-                print(f"[SKIP] {asset} - Not enough confluence")
-
-        log_event("[SCAN COMPLETE]\n")
-        print(f"[SLEEP] Sleeping for {SCAN_INTERVAL} seconds\n")
+            df = fetch_price_data(asset)
+            if df is not None and not df.empty:
+                analyze(asset, df)
         time.sleep(SCAN_INTERVAL)
 
-# --- Launcher ---
 
 if __name__ == "__main__":
-    scanner()
+    main()
