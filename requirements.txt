@@ -4,7 +4,7 @@ pandas
 numpy
 ta
 scipy
-sklearn
+scikit-learn
 pytz
 datetime
 schedule
