@@ -8,7 +8,7 @@ from statistics import mean
 import numpy as np
 
 print("🚀 Boot sequence started: LSOB engine waking up...")
-
+print(f"🛠️ Debug: Starting scan loop with {len(ASSETS)} assets")
 # === USER CONFIG ===
 FMP_API_KEY = '54kgcuCJpN9Yfwqb50Nx7e65UhuX1571'
 TELEGRAM_BOT_TOKEN = '7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0'
@@ -51,6 +51,7 @@ def trigger_short(symbol, entry, sl, tp):
 # === MAIN LOOP ===
 while True:
     for symbol in ASSETS:
+        print(f"🔁 Scanning {symbol} at {datetime.datetime.now()}")
         try:
             data = get_fmp_candles(symbol, interval=TIMEFRAME)
             if len(data) < 10:
