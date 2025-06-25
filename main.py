@@ -82,7 +82,7 @@ def trigger_short(symbol, entry, sl, tp):
 while True:
     print(f"Scan Start - {datetime.datetime.now()} | Total Assets: {len(ASSETS)}\n")
     for symbol in ASSETS:
-        print(f"\uD83D\uDD01 Scanning {symbol} at {datetime.datetime.now()}")
+        print(f"Scanning {symbol} at {datetime.datetime.now()}")
         data = get_fmp_candles(symbol, interval=TIMEFRAME)
 
         if len(data) < 6:
