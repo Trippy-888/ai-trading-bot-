@@ -36,14 +36,18 @@ def send_telegram_alert(message):
 def fetch_candles(symbol):
     url = f"https://financialmodelingprep.com/api/v3/historical-chart/1min/{symbol}?apikey={FMP_API_KEY}"
     try:
-        df = pd.DataFrame(requests.get(url).json())
+        response = requests.get(url)
+        data = response.json()
+        if not isinstance(data, list) or not data or not all(k in data[0] for k in ['date', 'open', 'high', 'low', 'close', 'volume']):
+            print(f"[ERROR] Invalid or empty data for {symbol}: {data}")
+            return None
+        df = pd.DataFrame(data)
         df = df.rename(columns={"open": "o", "high": "h", "low": "l", "close": "c", "volume": "v"})
         df = df[["date", "o", "h", "l", "c", "v"]].sort_values("date").reset_index(drop=True)
         return df
     except Exception as e:
-        print(f"Error fetching data for {symbol}: {e}")
+        print(f"[ERROR] Fetching data for {symbol}: {e}")
         return None
-
 # Primary sniper logic (6+ confluences)
 def evaluate_primary_sniper(df):
     if df is None or len(df) < 10:
