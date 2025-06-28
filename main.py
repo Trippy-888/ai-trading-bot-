@@ -22,8 +22,9 @@ TELEGRAM_USER_ID = os.getenv("TELEGRAM_USER_ID")
 
 # Asset list (12 astro-aligned assets)
 ASSETS = [
-    "XAUUSD", "XAGUSD", "NAS100", "US30", "GBPJPY", "USDJPY",
-    "EURUSD", "AUDUSD", "NZDJPY", "GBPUSD", "USOIL", "SPX500"
+    "XAUUSD", "XAGUSD", "GBPJPY", "USDJPY",
+    "EURUSD", "AUDUSD", "NZDJPY", "GBPUSD",
+    "USDCHF", "CADJPY", "EURJPY", "CHFJPY"
 ]
 
 # Send alert to Telegram
