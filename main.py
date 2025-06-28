@@ -13,9 +13,8 @@ TELEGRAM_BOT_TOKEN = os.getenv("7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0")
 TELEGRAM_USER_ID = os.getenv("8006606779")
 
 ASSETS = [
-    "XAUUSD", "XAGUSD", "GBPJPY", "USDJPY",
-    "EURUSD", "AUDUSD", "NZDJPY", "GBPUSD",
-    "USDCHF", "CADJPY", "EURJPY", "CHFJPY"
+    "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META",
+    "GCUSD", "SIUSD", "CLUSD", "PLUSD", "NGUSD", "HGUSD"
 ]
 
 def send_telegram_alert(message):
