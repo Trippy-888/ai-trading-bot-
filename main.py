@@ -72,7 +72,7 @@ def send_telegram(asset, entry, sl, tp, atr):
     requests.post(url, data=payload)
 
 # ========== MAIN LOOP ==========
-print("\n\u23f0 Scalping Bot Running (TF: 5min)...")
+print("\n\u23f0 Scalping Bot Running (TF: 3min)...")
 while True:
     for symbol, asset in ASSETS.items():
         df = fetch_data(symbol)
