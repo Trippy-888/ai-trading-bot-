@@ -18,7 +18,7 @@ ASSETS = {
     "GBPJPY": "GBP/JPY",
     "AUDUSD": "AUD/USD"
 }
-TF = "3min"
+TF = "15min"
 SCAN_INTERVAL = 15 * 60  # every 15 minutes
 LOOKBACK = 80
 ATR_PERIOD = 14
