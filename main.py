@@ -24,12 +24,13 @@ TP_MULTIPLIER = 1.8
 SL_MULTIPLIER = 1.0
 
 # ========== FUNCTIONS ==========
-def fetch_data(symbol):
+
+    def fetch_data(symbol):
     try:
         url = f"https://financialmodelingprep.com/api/v3/historical-chart/5min/{symbol}?apikey={FMP_API_KEY}"
         response = requests.get(url)
-print(f"📡 Requesting {symbol} | Status: {response.status_code}")
-print(f"📄 Raw response: {response.text[:300]}")
+        print(f"📡 Requesting {symbol} | Status: {response.status_code}")
+        print(f"📄 Raw response: {response.text[:300]}")
 
         data = response.json()
 
@@ -50,7 +51,6 @@ print(f"📄 Raw response: {response.text[:300]}")
     except Exception as e:
         print(f"[ERROR FETCHING] {symbol}: {e}")
         return pd.DataFrame()
-
 def calculate_indicators(df):
     df = df.copy()
     try:
