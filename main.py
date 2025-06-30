@@ -1,121 +1,84 @@
-# 📦 FMP Institutional Sniper Bot with Telegram Alert
-# ✅ Uses FMP-supported assets only
-# ✅ Includes trap logic, divergence, CHoCH, crash dot, order blocks, and more
-# ✅ Sends signal to Telegram: Entry, Exit, SL, TP, Confidence %
+# Sniper Scalping Bot with Dynamic SL/TP and FMP Assets - v3.8
+# TF: 5-min | Strategy: Trap + CHoCH + Divergence + Volume + ATR Filter | Alerts: Telegram
 
-import requests
-import time
-from datetime import datetime, timezone, timedelta
+import requests, time
+from datetime import datetime, timezone
+import pandas as pd
+import numpy as np
+from ta.momentum import RSIIndicator
+from ta.volatility import AverageTrueRange
 
-# 🔐 FMP API Key & Telegram Setup
+# ========== YOUR TELEGRAM + FMP CREDENTIALS ==========
 FMP_API_KEY = "54kgcuCJpN9Yfwqb50Nx7e65UhuX1571"
-TELEGRAM_BOT_TOKEN = "7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0"
+TELEGRAM_TOKEN = "7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0"
 TELEGRAM_CHAT_ID = "8006606779"
 
-# ✅ FMP-supported assets
+# ========== CONFIGURATION ==========
+SCAN_INTERVAL = 5 * 60  # every 5 minutes
 ASSETS = {
-    "Gold": "GCUSD",
-    "Silver": "SIUSD",
-    "Crude Oil": "CLUSD",
-    "GBP/USD": "GBPUSD",
-    "GBP/JPY": "GBPJPY",
-    "EUR/USD": "EURUSD",
-    "USD/JPY": "USDJPY",
-    "Bitcoin": "BTCUSD",
-    "Ethereum": "ETHUSD",
-    "NASDAQ100": "^IXIC",
-    "Dow Jones": "^DJI",
-    "S&P 500": "^GSPC"
+    "GCUSD": "Gold",
+    "SIUSD": "Silver",
+    "CLUSD": "Crude Oil",
+    "NDX": "NASDAQ100",
+    "DOW": "US30",
+    "SPX": "S&P500",
+    "GBPUSD": "GBP/USD",
+    "USDJPY": "USD/JPY",
+    "EURUSD": "EUR/USD",
+    "GBPJPY": "GBP/JPY",
+    "AUDUSD": "AUD/USD",
+    "USDCAD": "USD/CAD"
 }
+LOOKBACK = 50  # candles to look back
+ATR_PERIOD = 14
+TP_MULTIPLIER = 1.8
+SL_MULTIPLIER = 1.0
 
-# 🚨 Send Telegram Alert
-def send_telegram(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message,
-        "parse_mode": "Markdown"
-    }
+# ========== FUNCTIONS ==========
+def fetch_data(symbol):
     try:
-        r = requests.post(url, data=payload)
-        r.raise_for_status()
-    except requests.RequestException as e:
-        print(f"Failed to send Telegram message: {e}")
+        url = f"https://financialmodelingprep.com/api/v3/historical-chart/5min/{symbol}?apikey={FMP_API_KEY}"
+        df = pd.DataFrame(requests.get(url).json())
+        df = df.rename(columns={'date': 'datetime'})
+        df['datetime'] = pd.to_datetime(df['datetime'])
+        df = df.sort_values('datetime').reset_index(drop=True)
+        return df[['datetime', 'open', 'high', 'low', 'close', 'volume']]
+    except:
+        return pd.DataFrame()
 
-# 🧠 Logic Modules (simplified placeholder logic)
-def detect_trap_candle(candle):
-    return float(candle['open']) < float(candle['low'])
+def calculate_indicators(df):
+    df['rsi'] = RSIIndicator(df['close'], window=14).rsi()
+    atr = AverageTrueRange(high=df['high'], low=df['low'], close=df['close'], window=ATR_PERIOD)
+    df['atr'] = atr.average_true_range()
+    df['divergence'] = df['close'].diff(3) * df['rsi'].diff(3) < 0
+    df['choch'] = df['close'].diff().abs() > df['atr'] * 1.2
+    df['trap'] = (df['close'].shift(1) < df['low'].rolling(3).min()) & (df['close'] > df['open'])
+    return df
 
-def detect_smart_divergence(price, rsi):
-    return price < rsi  # simplified placeholder
+def check_entry(df):
+    last = df.iloc[-1]
+    if last['trap'] and last['divergence'] and last['choch']:
+        entry = last['close']
+        sl = entry - (last['atr'] * SL_MULTIPLIER)
+        tp = entry + (last['atr'] * TP_MULTIPLIER)
+        return entry, sl, tp, last['atr']
+    return None
 
-def detect_volume_spike(volume):
-    return volume > 10000  # example condition
+def send_telegram(asset, entry, sl, tp, atr):
+    msg = f"\ud83d\udce1 *Scalp Entry Alert*\n\n\ud83d\udcb2 Asset: {asset}\n\ud83c\udfaf Entry: {entry:.3f}\n\u274e SL: {sl:.3f}\n\u2705 TP: {tp:.3f}\n\ud83d\udd22 ATR: {atr:.2f}\n\ud83d\udd39 Filters: Trap \u2705 | CHoCH \u2705 | Divergence \u2705\n\ud83d\udd52 Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"}
+    requests.post(url, data=payload)
 
-def detect_choch(candles):
-    return float(candles[0]['high']) > float(candles[1]['high'])
-
-def detect_crash_dot(candle):
-    return abs(float(candle['open']) - float(candle['close'])) > 10  # big move
-
-# 🔍 Analyze single asset
-last_signal_time = datetime.now(timezone.utc)
-
-def analyze_asset(name, symbol):
-    global last_signal_time
-    try:
-        chart_url = f"https://financialmodelingprep.com/api/v3/historical-chart/1min/{symbol}?apikey={FMP_API_KEY}"
-        r = requests.get(chart_url)
-        r.raise_for_status()
-        candles = r.json()[:5]  # Last 5 candles
-
-        if not candles or len(candles) < 3:
-            print(f"Insufficient candle data for {name}")
-            return False
-
-        trap = detect_trap_candle(candles[0])
-        choch = detect_choch(candles)
-        crash = detect_crash_dot(candles[0])
-        divergence = detect_smart_divergence(float(candles[0]['close']), float(candles[1]['close']))
-
-        if trap and choch and divergence:
-            entry = float(candles[0]['close'])
-            sl = round(entry - 5, 2)
-            tp = round(entry + 10, 2)
-            confidence = 96 if crash else 91
-
-            message = f"\n📡 *Sniper Signal: {name}*\n"
-            message += f"*Entry:* {entry}\n*SL:* {sl}\n*TP:* {tp}\n"
-            message += f"*Confidence:* {confidence}%\n"
-            message += f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
-            send_telegram(message)
-            last_signal_time = datetime.now(timezone.utc)
-            return True
-
-    except Exception as e:
-        print(f"Error analyzing {name}: {e}")
-    return False
-
-# 🔁 Continuous Scan Loop (every 1 minute)
-def run_scan():
-    global last_signal_time
-    while True:
-        print(f"\n🔁 Running institutional sniper scan @ {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
-        trade_found = False
-        for name, symbol in ASSETS.items():
-            print(f"Analyzing {name} ({symbol})...")
-            if analyze_asset(name, symbol):
-                trade_found = True
-            time.sleep(1)  # avoid rate limits
-
-        if not trade_found:
-            now = datetime.now(timezone.utc)
-            if now - last_signal_time > timedelta(hours=1):
-                send_telegram(f"🕒 No valid trades found in the past hour. Last checked: {now.strftime('%Y-%m-%d %H:%M:%S')} UTC")
-                last_signal_time = now  # reset timer so it doesn't spam every minute
-
-        print("✅ Scan complete. Waiting 60 seconds...")
-        time.sleep(60)
-
-if __name__ == "__main__":
-    run_scan()
+# ========== MAIN LOOP ==========
+print("\n\u23f0 Scalping Bot Running (TF: 5min)...")
+while True:
+    for symbol, asset in ASSETS.items():
+        df = fetch_data(symbol)
+        if not df.empty:
+            df = calculate_indicators(df[-LOOKBACK:])
+            result = check_entry(df)
+            if result:
+                entry, sl, tp, atr = result
+                send_telegram(asset, entry, sl, tp, atr)
+    time.sleep(SCAN_INTERVAL)
