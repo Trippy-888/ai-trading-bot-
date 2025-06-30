@@ -35,7 +35,9 @@ SL_MULTIPLIER = 1.0
 def fetch_data(symbol):
     try:
         url = f"https://financialmodelingprep.com/api/v3/historical-chart/5min/{symbol}?apikey={FMP_API_KEY}"
-        df = pd.DataFrame(requests.get(url).json())
+        response = requests.get(url)
+        print(f"📡 RAW API RESPONSE ({symbol}):", response.text[:500])  # print first 500 chars
+        df = pd.DataFrame(response.json())
         df = df.rename(columns={'date': 'datetime'})
         df['datetime'] = pd.to_datetime(df['datetime'])
         df = df.sort_values('datetime').reset_index(drop=True)
