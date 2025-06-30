@@ -19,13 +19,6 @@ ASSETS = {
     "GCUSD": "Gold",
     "SIUSD": "Silver",
     "CLUSD": "Crude Oil",
-    "NDX": "NASDAQ100",
-    "DOW": "US30",
-    "SPX": "S&P500",
-    "GBPUSD": "GBP/USD",
-    "USDJPY": "USD/JPY",
-    "GBPJPY": "GBP/JPY",
-    "AUDUSD": "AUD/USD"
 }
 
 TF = "3min"
