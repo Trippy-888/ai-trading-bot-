@@ -47,12 +47,13 @@ def fetch_data(symbol):
         return pd.DataFrame()
 
 def calculate_indicators(df):
-    df['rsi'] = RSIIndicator(df['close'], window=14).rsi()
+    df = df.copy()
+    df.loc[:, 'rsi'] = RSIIndicator(df['close'], window=14).rsi()
     atr = AverageTrueRange(high=df['high'], low=df['low'], close=df['close'], window=ATR_PERIOD)
-    df['atr'] = atr.average_true_range()
-    df['divergence'] = df['close'].diff(3) * df['rsi'].diff(3) < 0
-    df['choch'] = df['close'].diff().abs() > df['atr'] * 1.2
-    df['trap'] = (df['close'].shift(1) < df['low'].rolling(3).min()) & (df['close'] > df['open'])
+    df.loc[:, 'atr'] = atr.average_true_range()
+    df.loc[:, 'divergence'] = df['close'].diff(3) * df['rsi'].diff(3) < 0
+    df.loc[:, 'choch'] = df['close'].diff().abs() > df['atr'] * 1.2
+    df.loc[:, 'trap'] = (df['close'].shift(1) < df['low'].rolling(3).min()) & (df['close'] > df['open'])
     return df
 
 def check_entry(df):
