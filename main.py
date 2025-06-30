@@ -13,9 +13,6 @@ TELEGRAM_CHAT_ID = "8006606779"
 ASSETS = {
     "XAUUSD": "Gold",
     "XAGUSD": "Silver",
-    "NDX100": "NASDAQ100",
-    "DJI": "Dow Jones",
-    "SPX": "S&P500",
     "GBPUSD": "GBP/USD",
     "USDJPY": "USD/JPY",
     "GBPJPY": "GBP/JPY",
