@@ -15,11 +15,18 @@ FMP_API_KEY = "<54kgcuCJpN9Yfwqb50Nx7e65UhuX1571>"
 TELEGRAM_TOKEN = "<7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0>"
 TELEGRAM_CHAT_ID = "<8006606779>"
 
-ASSETS = {
-    "GCUSD": "Gold",
-    "SIUSD": "Silver",
-    "CLUSD": "Crude Oil",
+    ASSETS = {
+    "XAUUSD": "Gold",
+    "XAGUSD": "Silver",
+    "NDX100": "NASDAQ100",
+    "DJI": "Dow Jones",
+    "SPX": "S&P500",
+    "GBPUSD": "GBP/USD",
+    "USDJPY": "USD/JPY",
+    "GBPJPY": "GBP/JPY",
+    "AUDUSD": "AUD/USD"
 }
+
 
 TF = "3min"
 SCAN_INTERVAL = 180  # in seconds
