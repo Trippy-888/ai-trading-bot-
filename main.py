@@ -27,6 +27,7 @@ SL_MULTIPLIER = 1.0
 
 # ========== FUNCTIONS ==========
 def fetch_data(symbol):
+   print(f"📊 Scanning {asset} ({symbol})...")
     try:
         url = f"https://financialmodelingprep.com/api/v3/historical-chart/{TF}/{symbol}?apikey={FMP_API_KEY}"
         response = requests.get(url)
@@ -42,6 +43,7 @@ def fetch_data(symbol):
         return df[['datetime', 'open', 'high', 'low', 'close', 'volume']].copy()
     except Exception as e:
         print(f"[ERROR FETCHING] {symbol}: {e}")
+        print(f"[✅ FETCHED] {symbol} | Candles: {len(df)}")
         return pd.DataFrame()
 
 def calculate_indicators(df):
