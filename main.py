@@ -14,7 +14,7 @@ TELEGRAM_TOKEN = "7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0"
 TELEGRAM_CHAT_ID = "8006606779"
 
 # ========== CONFIGURATION ==========
-SCAN_INTERVAL = 5 * 60  # every 5 minutes
+SCAN_INTERVAL = 3 * 60  # every 5 minutes
 ASSETS = {
     "GCUSD": "Gold",
     "SIUSD": "Silver",
