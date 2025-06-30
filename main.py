@@ -92,7 +92,8 @@ print(f"\n⏰ Sniper Bot v5 Running (TF: {TF})...")
 while True:
     for symbol, asset in ASSETS.items():
         df = fetch_data(symbol)
-        if not df.empty:
+        if not df.empty: 
+            print(f"[✅ FETCHED] {symbol} | Candles: {len(df)}")
             df = calculate_indicators(df[-LOOKBACK:])
             result = check_entry(df)
             if result:
