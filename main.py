@@ -1,8 +1,3 @@
-# Sniper Bot v5 - Final Astro Edition (FMP + Telegram + Railway)
-# Timeframe: 3min entries + 15min filters
-# Assets: 10 hand-picked as per astro logic
-# Platform: Railway
-
 import requests, time
 from datetime import datetime
 import pandas as pd
@@ -11,11 +6,11 @@ from ta.momentum import RSIIndicator
 from ta.volatility import AverageTrueRange
 
 # ========== CONFIG ==========
-FMP_API_KEY = "<54kgcuCJpN9Yfwqb50Nx7e65UhuX1571>"
-TELEGRAM_TOKEN = "<7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0>"
-TELEGRAM_CHAT_ID = "<8006606779>"
+FMP_API_KEY = "54kgcuCJpN9Yfwqb50Nx7e65UhuX1571"
+TELEGRAM_TOKEN = "7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0"
+TELEGRAM_CHAT_ID = "8006606779"
 
-    ASSETS = {
+ASSETS = {
     "XAUUSD": "Gold",
     "XAGUSD": "Silver",
     "NDX100": "NASDAQ100",
@@ -26,8 +21,6 @@ TELEGRAM_CHAT_ID = "<8006606779>"
     "GBPJPY": "GBP/JPY",
     "AUDUSD": "AUD/USD"
 }
-
-
 TF = "3min"
 SCAN_INTERVAL = 180  # in seconds
 LOOKBACK = 80
