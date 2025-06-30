@@ -22,7 +22,7 @@ ASSETS = {
     "AUDUSD": "AUD/USD"
 }
 TF = "3min"
-SCAN_INTERVAL = 180  # in seconds
+SCAN_INTERVAL = 15 * 60  # every 15 minutes
 LOOKBACK = 80
 ATR_PERIOD = 14
 TP_MULTIPLIER = 1.6
@@ -31,7 +31,7 @@ SL_MULTIPLIER = 1.0
 # ========== FUNCTIONS ==========
 def fetch_data(symbol):
     try:
-        url = f"https://financialmodelingprep.com/api/v3/historical-chart/3min/{symbol}?apikey={FMP_API_KEY}"
+        url = f"https://financialmodelingprep.com/api/v3/historical-chart/15min/{symbol}?apikey={FMP_API_KEY}"
         response = requests.get(url)
         data = response.json()
 
