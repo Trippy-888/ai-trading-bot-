@@ -1,5 +1,5 @@
 # Sniper Scalping Bot with Dynamic SL/TP and FMP Assets - v3.8
-# TF: 5-min | Strategy: Trap + CHoCH + Divergence + Volume + ATR Filter | Alerts: Telegram
+# TF: 3-min | Strategy: Trap + CHoCH + Divergence + Volume + ATR Filter | Alerts: Telegram
 
 import requests, time
 from datetime import datetime, timezone
@@ -14,7 +14,7 @@ TELEGRAM_TOKEN = "7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0"
 TELEGRAM_CHAT_ID = "8006606779"
 
 # ========== CONFIGURATION ==========
-SCAN_INTERVAL = 3 * 180  # every 3 minutes
+SCAN_INTERVAL = 3 * 60  # every 3 minutes
 ASSETS = {
     "GCUSD": "Gold",
     "SIUSD": "Silver",
