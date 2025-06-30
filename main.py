@@ -24,8 +24,7 @@ TP_MULTIPLIER = 1.8
 SL_MULTIPLIER = 1.0
 
 # ========== FUNCTIONS ==========
-
-    def fetch_data(symbol):
+def fetch_data(symbol):
     try:
         url = f"https://financialmodelingprep.com/api/v3/historical-chart/5min/{symbol}?apikey={FMP_API_KEY}"
         response = requests.get(url)
@@ -47,6 +46,10 @@ SL_MULTIPLIER = 1.0
         df['datetime'] = pd.to_datetime(df['datetime'])
         df = df.sort_values('datetime').reset_index(drop=True)
         return df[['datetime', 'open', 'high', 'low', 'close', 'volume']]
+
+    except Exception as e:
+        print(f"[ERROR FETCHING] {symbol}: {e}")
+        return pd.DataFrame()
 
     except Exception as e:
         print(f"[ERROR FETCHING] {symbol}: {e}")
