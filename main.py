@@ -17,14 +17,6 @@ TELEGRAM_CHAT_ID = "8006606779"
 SCAN_INTERVAL = 5 * 60  # every 5 minutes
 ASSETS = {
     "GCUSD": "Gold",
-    "SIUSD": "Silver",
-    "CLUSD": "Crude Oil",
-    "GBPUSD": "GBP/USD",
-    "USDJPY": "USD/JPY",
-    "EURUSD": "EUR/USD",
-    "GBPJPY": "GBP/JPY",
-    "AUDUSD": "AUD/USD",
-    "USDCAD": "USD/CAD"
 }
 LOOKBACK = 50  # candles to look back
 ATR_PERIOD = 14
@@ -36,12 +28,24 @@ def fetch_data(symbol):
     try:
         url = f"https://financialmodelingprep.com/api/v3/historical-chart/5min/{symbol}?apikey={FMP_API_KEY}"
         response = requests.get(url)
-        print(f"📡 RAW API RESPONSE ({symbol}):", response.text[:500])  # print first 500 chars
-        df = pd.DataFrame(response.json())
+        print(f"📡 Requesting {symbol} | Status: {response.status_code}")
+
+        data = response.json()
+
+        if not isinstance(data, list) or len(data) == 0:
+            print(f"⚠️ Empty or invalid response for {symbol}: {data}")
+            return pd.DataFrame()
+
+        if 'date' not in data[0]:
+            print(f"❌ 'date' key missing in response for {symbol}: {data[0]}")
+            return pd.DataFrame()
+
+        df = pd.DataFrame(data)
         df = df.rename(columns={'date': 'datetime'})
         df['datetime'] = pd.to_datetime(df['datetime'])
         df = df.sort_values('datetime').reset_index(drop=True)
         return df[['datetime', 'open', 'high', 'low', 'close', 'volume']]
+
     except Exception as e:
         print(f"[ERROR FETCHING] {symbol}: {e}")
         return pd.DataFrame()
