@@ -41,6 +41,10 @@ def fetch_data(symbol):
         url = f"https://financialmodelingprep.com/api/v3/historical-chart/3min/{symbol}?apikey={FMP_API_KEY}"
         response = requests.get(url)
         data = response.json()
+
+        if not isinstance(data, list) or len(data) == 0:
+            raise ValueError("Invalid or empty data received")
+
         df = pd.DataFrame(data)
         df = df.rename(columns={'date': 'datetime'})
         df['datetime'] = pd.to_datetime(df['datetime'])
