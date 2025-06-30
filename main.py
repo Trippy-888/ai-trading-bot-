@@ -18,8 +18,8 @@ ASSETS = {
     "GBPJPY": "GBP/JPY",
     "AUDUSD": "AUD/USD"
 }
-TF = "15min"
-SCAN_INTERVAL = 15 * 60  # every 15 minutes
+TF = "5min"
+SCAN_INTERVAL = 5 * 60  # every 5 minutes
 LOOKBACK = 80
 ATR_PERIOD = 14
 TP_MULTIPLIER = 1.6
@@ -28,7 +28,7 @@ SL_MULTIPLIER = 1.0
 # ========== FUNCTIONS ==========
 def fetch_data(symbol):
     try:
-        url = f"https://financialmodelingprep.com/api/v3/historical-chart/15min/{symbol}?apikey={FMP_API_KEY}"
+        url = f"https://financialmodelingprep.com/api/v3/historical-chart/{TF}/{symbol}?apikey={FMP_API_KEY}"
         response = requests.get(url)
         data = response.json()
 
@@ -59,11 +59,13 @@ def check_entry(df):
     filters = {
         'trap': bool(last['trap']),
         'divergence': bool(last['divergence']),
-        'choch': bool(last['choch'])
+        'choch': bool(last['choch']),
+        'volume_spike': last['volume'] > df['volume'].rolling(10).mean().iloc[-1],
+        'sweep': (last['low'] < df['low'].rolling(10).min().iloc[-2]) or (last['high'] > df['high'].rolling(10).max().iloc[-2])
     }
     confidence = int((sum(filters.values()) / len(filters)) * 100)
 
-    if sum(filters.values()) >= 2:
+    if confidence >= 60:
         entry = last['close']
         sl = entry - (last['atr'] * SL_MULTIPLIER)
         tp = entry + (last['atr'] * TP_MULTIPLIER)
@@ -75,12 +77,12 @@ def send_telegram(asset, entry, sl, tp, conf, filters):
     msg = f"""
 📡 *Sniper Entry Alert*
 
-🪙 *Asset:* {asset}
+🧹 *Asset:* {asset}
 🎯 *Entry:* {entry:.3f}
 🛑 *SL:* {sl:.3f}
 ✅ *TP:* {tp:.3f}
 📊 *Confidence:* {conf}%
-📎 *Reason:* {reason}
+📌 *Reason:* {reason}
 🕒 *Time:* {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
 """
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -92,8 +94,7 @@ print(f"\n⏰ Sniper Bot v5 Running (TF: {TF})...")
 while True:
     for symbol, asset in ASSETS.items():
         df = fetch_data(symbol)
-        if not df.empty: 
-            print(f"[✅ FETCHED] {symbol} | Candles: {len(df)}")
+        if not df.empty:
             df = calculate_indicators(df[-LOOKBACK:])
             result = check_entry(df)
             if result:
