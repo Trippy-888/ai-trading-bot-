@@ -28,7 +28,8 @@ def fetch_data(symbol):
     try:
         url = f"https://financialmodelingprep.com/api/v3/historical-chart/5min/{symbol}?apikey={FMP_API_KEY}"
         response = requests.get(url)
-        print(f"📡 Requesting {symbol} | Status: {response.status_code}")
+print(f"📡 Requesting {symbol} | Status: {response.status_code}")
+print(f"📄 Raw response: {response.text[:300]}")
 
         data = response.json()
 
