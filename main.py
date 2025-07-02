@@ -56,7 +56,7 @@ TP_MULTIPLIERS = {
 }
 
 trades_today = 0
-today_date = datetime.now(timezone.utc).date() 
+today_date = datetime.now(timezone.utc).date()
 last_trade_time = {}  # Prevent overtrading same pair
 
 # ========== INSTITUTIONAL FUNCTIONS ==========
