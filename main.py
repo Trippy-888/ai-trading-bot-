@@ -525,7 +525,7 @@ def check_trade_quality(symbol, df):
         return None
 
     # Prevent overtrading same pair
-     now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
     if symbol in last_trade_time:
         time_diff = (now - last_trade_time[symbol]).total_seconds() / 3600
         if time_diff < 2:  # Minimum 2 hours between trades on same pair
