@@ -1,6 +1,6 @@
 
 import requests, time
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 import numpy as np
 from ta.momentum import RSIIndicator, StochasticOscillator
