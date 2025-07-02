@@ -1,6 +1,6 @@
 
 import requests, time
-from datetime import datetime,timezone 
+from datetime import datetime
 import pandas as pd
 import numpy as np
 from ta.momentum import RSIIndicator, StochasticOscillator
@@ -9,13 +9,14 @@ from ta.trend import EMAIndicator, MACD, SMAIndicator
 from ob_fvg_trap import detect_ob_fvg_trap
 from boost_module import boost_confluence, adjust_filters_based_on_volatility, ai_adjust_filters_based_on_context, detect_range_volume_trap
 from session_filter import session_allows_entry, detect_revenge_trap
+from breakout_detector import detect_breakout, detect_false_breakout, confirm_breakout_strength
 
 # ========== CONFIG ==========
 FMP_API_KEY = "54kgcuCJpN9Yfwqb50Nx7e65UhuX1571"
 TELEGRAM_TOKEN = "7403427584:AAF5FOsZ4w5non_9WFHAN362-76Oe5dVZo0"
 TELEGRAM_CHAT_ID = "8006606779"
 
-# Premium forex pairs with high liquidity
+# Premium forex pairs with high liquidity + crypto and exotics
 ASSETS = {
     "EURUSD": "EUR/USD",
     "GBPUSD": "GBP/USD", 
@@ -24,7 +25,10 @@ ASSETS = {
     "USDCAD": "USD/CAD",
     "XAUUSD": "Gold",
     "GBPJPY": "GBP/JPY",
-    "EURJPY": "EUR/JPY"
+    "EURJPY": "EUR/JPY",
+    "BTCUSD": "Bitcoin",
+    "ETHUSD": "Ethereum",
+    "USDZAR": "USD/ZAR"  # High-volatility exotic
 }
 
 # Multi-Timeframe Sniper Configuration (Fixed working timeframes)
@@ -52,7 +56,7 @@ TP_MULTIPLIERS = {
 }
 
 trades_today = 0
-today_date = datetime.now(timezone.utc).date()
+today_date = datetime.utcnow().date()
 last_trade_time = {}  # Prevent overtrading same pair
 
 # ========== INSTITUTIONAL FUNCTIONS ==========
@@ -496,6 +500,17 @@ def institutional_signal_score(df):
             score += 2
             signals.append("💥 Range Breakout")
 
+        # 8. Advanced Breakout Detection
+        if direction and detect_breakout(df, direction):
+            breakout_strength = confirm_breakout_strength(df, direction)
+            score += breakout_strength
+            signals.append(f"🚀 Breakout Strength: {breakout_strength}/5")
+            
+        # Penalty for false breakouts
+        if detect_false_breakout(df):
+            score -= 3
+            signals.append("⚠️ False Breakout Risk")
+
         # Apply dynamic volatility adjustments
         score += vol_adjustments['score_offset']
         
@@ -525,7 +540,7 @@ def check_trade_quality(symbol, df):
         return None
 
     # Prevent overtrading same pair
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     if symbol in last_trade_time:
         time_diff = (now - last_trade_time[symbol]).total_seconds() / 3600
         if time_diff < 2:  # Minimum 2 hours between trades on same pair
@@ -688,7 +703,7 @@ print("-" * 60)
 
 while True:
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         # Reset daily counter
         if now.date() != today_date:
