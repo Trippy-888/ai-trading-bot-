@@ -6,6 +6,9 @@ import numpy as np
 from ta.momentum import RSIIndicator, StochasticOscillator
 from ta.volatility import AverageTrueRange, BollingerBands
 from ta.trend import EMAIndicator, MACD, SMAIndicator
+from ob_fvg_trap import detect_ob_fvg_trap
+from boost_module import boost_confluence, adjust_filters_based_on_volatility, ai_adjust_filters_based_on_context, detect_range_volume_trap
+from session_filter import session_allows_entry, detect_revenge_trap
 
 # ========== CONFIG ==========
 FMP_API_KEY = "54kgcuCJpN9Yfwqb50Nx7e65UhuX1571"
@@ -24,8 +27,17 @@ ASSETS = {
     "EURJPY": "EUR/JPY"
 }
 
-TF = "15min"  # Higher timeframe for quality
-SCAN_INTERVAL = 900  # 15 minutes - no rushing
+# Multi-Timeframe Sniper Configuration (Fixed working timeframes)
+TIMEFRAMES = {
+    "1min": 1,
+    "5min": 5,
+    "15min": 15,
+    "1hour": 60,
+    "4hour": 240
+}
+
+TF = "15min"  # Primary timeframe for analysis
+SCAN_INTERVAL = 300  # 5 minutes for faster sniper detection
 LOOKBACK = 100  # More data for better analysis
 MIN_SIGNAL_STRENGTH = 7  # Only high-quality signals
 MAX_DAILY_TRADES = 8
@@ -45,44 +57,108 @@ last_trade_time = {}  # Prevent overtrading same pair
 
 # ========== INSTITUTIONAL FUNCTIONS ==========
 
+def fetch_multiple_timeframes(symbol):
+    """Multi-Timeframe Sniper: Fetch all timeframes for confluence analysis"""
+    tf_data = {}
+    successful_fetches = 0
+    
+    for tf_label in TIMEFRAMES:
+        try:
+            # Add delay between requests to avoid rate limiting
+            time.sleep(1)
+            
+            url = f"https://financialmodelingprep.com/api/v3/historical-chart/{tf_label}/{symbol}?apikey={FMP_API_KEY}"
+            response = requests.get(url, timeout=15)
+            
+            if response.status_code == 429:  # Rate limited
+                print(f"[RATE LIMIT] {symbol} {tf_label}: Waiting...")
+                time.sleep(5)
+                response = requests.get(url, timeout=15)
+            
+            if response.status_code != 200:
+                print(f"[API ERROR] {symbol} {tf_label}: Status {response.status_code}")
+                continue
+                
+            try:
+                data = response.json()
+            except:
+                print(f"[JSON ERROR] {symbol} {tf_label}: Invalid JSON response")
+                continue
+                
+            if not data:
+                print(f"[NO DATA] {symbol} {tf_label}: Empty response")
+                continue
+                
+            if not isinstance(data, list):
+                if isinstance(data, dict) and 'Error Message' in data:
+                    print(f"[API ERROR] {symbol} {tf_label}: {data['Error Message']}")
+                else:
+                    print(f"[FORMAT ERROR] {symbol} {tf_label}: Expected list, got {type(data)}")
+                continue
+                
+            if len(data) < 15:  # Very minimum requirement
+                print(f"[INSUFFICIENT DATA] {symbol} {tf_label}: Only {len(data)} candles")
+                continue
+                
+            df = pd.DataFrame(data)
+            
+            # Check required columns exist
+            required_columns = ['open', 'high', 'low', 'close']
+            if not all(col in df.columns for col in required_columns):
+                print(f"[MISSING COLUMNS] {symbol} {tf_label}: Missing OHLC data")
+                continue
+            
+            # Handle date column
+            date_column = None
+            for col in ['date', 'datetime', 'time']:
+                if col in df.columns:
+                    date_column = col
+                    break
+                    
+            if not date_column:
+                print(f"[NO DATE] {symbol} {tf_label}: No date column found")
+                continue
+                
+            df = df.rename(columns={date_column: 'datetime'})
+            df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
+            df = df.dropna(subset=['datetime']).sort_values('datetime').reset_index(drop=True)
+            
+            # Convert numeric columns
+            numeric_cols = ['open', 'high', 'low', 'close', 'volume']
+            for col in numeric_cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                elif col == 'volume':
+                    df[col] = 1000  # Default volume if missing
+                    
+            df = df.dropna(subset=['open', 'high', 'low', 'close']).reset_index(drop=True)
+            
+            if len(df) >= 15:
+                tf_data[tf_label] = df[-min(LOOKBACK, len(df)):]
+                successful_fetches += 1
+                print(f"✅ {symbol} {tf_label}: {len(df)} candles")
+            else:
+                print(f"[CLEAN DATA ERROR] {symbol} {tf_label}: Only {len(df)} clean candles")
+            
+        except requests.exceptions.Timeout:
+            print(f"[TIMEOUT] {symbol} {tf_label}")
+            continue
+        except Exception as e:
+            print(f"[ERROR] {symbol} {tf_label}: {str(e)[:50]}")
+            continue
+    
+    # If we got at least 2 timeframes, consider it successful
+    if successful_fetches >= 2:
+        print(f"✅ {symbol}: {successful_fetches}/{len(TIMEFRAMES)} timeframes loaded")
+    else:
+        print(f"❌ {symbol}: Only {successful_fetches}/{len(TIMEFRAMES)} timeframes - insufficient for analysis")
+            
+    return tf_data
+
 def fetch_data(symbol):
-    try:
-        url = f"https://financialmodelingprep.com/api/v3/historical-chart/{TF}/{symbol}?apikey={FMP_API_KEY}"
-        response = requests.get(url, timeout=20)
-        
-        if response.status_code != 200:
-            print(f"[API ERROR] {symbol}: HTTP {response.status_code}")
-            return pd.DataFrame()
-
-        data = response.json()  # Add this line here
-
-        if not data or not isinstance(data, list) or len(data) < 50:
-            print(f"[API] {symbol}: Insufficient data")
-            return pd.DataFrame()
-
-        df = pd.DataFrame(data)
-
-        if 'date' in df.columns:
-            df = df.rename(columns={'date': 'datetime'})
-
-        df['datetime'] = pd.to_datetime(df['datetime'])
-        df = df.sort_values('datetime').reset_index(drop=True)
-
-        numeric_cols = ['open', 'high', 'low', 'close', 'volume']
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-
-        df = df.dropna(subset=numeric_cols).reset_index(drop=True)
-
-        if len(df) < 50:
-            return pd.DataFrame()
-
-        return df[['datetime'] + numeric_cols].copy()
-
-    except Exception as e:
-        print(f"[ERROR] {symbol}: {str(e)}")
-        return pd.DataFrame()
+    """Legacy function for primary timeframe - now uses sniper system"""
+    tf_data = fetch_multiple_timeframes(symbol)
+    return tf_data.get(TF, pd.DataFrame())
 
 def calculate_institutional_indicators(df):
     """Advanced multi-timeframe analysis like hedge funds use"""
@@ -168,13 +244,98 @@ def calculate_institutional_indicators(df):
         df['accumulation'] = (df['close'] > df['open']) & (df['vol_ratio'] > 1.3) & (df['close'] > df['ema_21'])
         df['distribution'] = (df['close'] < df['open']) & (df['vol_ratio'] > 1.3) & (df['close'] < df['ema_21'])
 
+        # Add OB/FVG/Trap detection
+        df = detect_ob_fvg_trap(df)
+
     except Exception as e:
         print(f"[INDICATOR ERROR]: {e}")
 
     return df
 
+def analyze_multi_timeframe_confluence(symbol, direction):
+    """Multi-Timeframe Sniper: Analyze all timeframes for perfect entries"""
+    tf_data = fetch_multiple_timeframes(symbol)
+    
+    if len(tf_data) < 2:  # Reduced requirement - need at least 2 timeframes
+        print(f"[CONFLUENCE] {symbol}: Insufficient timeframes ({len(tf_data)})")
+        return 0, []
+        
+    confluence_score = 0
+    tf_signals = []
+    total_possible_score = 0
+    
+    # Calculate weights for available timeframes
+    tf_weights = {
+        "1min": 1,
+        "5min": 2, 
+        "15min": 3,
+        "1hour": 4,
+        "4hour": 5
+    }
+    
+    for tf_label, df in tf_data.items():
+        if df.empty or len(df) < 15:
+            tf_signals.append(f"{tf_label} ⚠️")
+            continue
+            
+        try:
+            # Adaptive window sizes based on available data
+            ema_window = min(21, len(df) // 3)
+            rsi_window = min(14, len(df) // 4)
+            
+            if ema_window < 5 or rsi_window < 5:
+                tf_signals.append(f"{tf_label} ⚠️")
+                continue
+            
+            # Quick trend analysis for each timeframe
+            df['ema_fast'] = EMAIndicator(df['close'], window=max(8, ema_window//2)).ema_indicator()
+            df['ema_slow'] = EMAIndicator(df['close'], window=ema_window).ema_indicator()
+            df['rsi'] = RSIIndicator(df['close'], window=rsi_window).rsi()
+            
+            last = df.iloc[-1]
+            weight = tf_weights.get(tf_label, 2)
+            total_possible_score += weight
+            
+            # Trend alignment check
+            signal_strength = 0
+            
+            if direction == "BUY":
+                if last['ema_fast'] > last['ema_slow']:
+                    signal_strength += 0.4
+                if last['close'] > last['ema_fast']:
+                    signal_strength += 0.3
+                if 25 <= last['rsi'] <= 75:  # More lenient RSI
+                    signal_strength += 0.3
+                    
+            elif direction == "SELL":
+                if last['ema_fast'] < last['ema_slow']:
+                    signal_strength += 0.4
+                if last['close'] < last['ema_fast']:
+                    signal_strength += 0.3
+                if 25 <= last['rsi'] <= 75:  # More lenient RSI
+                    signal_strength += 0.3
+            
+            # Award score based on signal strength
+            if signal_strength >= 0.7:  # Strong signal
+                confluence_score += weight
+                tf_signals.append(f"{tf_label} ✅")
+            elif signal_strength >= 0.4:  # Partial signal
+                confluence_score += weight * 0.5
+                tf_signals.append(f"{tf_label} ⚡")
+            else:
+                tf_signals.append(f"{tf_label} ❌")
+                    
+        except Exception as e:
+            tf_signals.append(f"{tf_label} ⚠️")
+            continue
+    
+    # Calculate percentage confluence
+    confluence_percentage = (confluence_score / total_possible_score * 100) if total_possible_score > 0 else 0
+    
+    return confluence_score, tf_signals
+
 def institutional_signal_score(df):
-    """Hedge fund grade signal scoring system"""
+    """Enhanced with Multi-Timeframe Sniper capabilities"""
     if df.empty or len(df) < 20:
         return 0, None, None
 
@@ -183,6 +344,14 @@ def institutional_signal_score(df):
     score = 0
     signals = []
     direction = None
+
+    # Get dynamic volatility adjustments
+    vol_adjustments = adjust_filters_based_on_volatility(df)
+    context_adjustments = ai_adjust_filters_based_on_context(df)
+    
+    # Skip signal if sideways market detected
+    if context_adjustments.get('skip_signal', False):
+        return 0, None, None
 
     try:
         # 1. Trend Alignment (30% weight)
@@ -293,6 +462,48 @@ def institutional_signal_score(df):
 
         score += structure_score
 
+        # 6. OB/FVG/Trap Detection Bonus (10% weight)
+        ob_fvg_score = 0
+        
+        if direction == "BUY":
+            if last['bullish_ob']:
+                ob_fvg_score += 2
+                signals.append("📦 Bullish OB")
+            if last['fvg_up']:
+                ob_fvg_score += 1
+                signals.append("📈 Bullish FVG")
+            # Avoid trap signals
+            if last['trap_buy']:
+                ob_fvg_score -= 2
+                signals.append("⚠️ Buy Trap Detected")
+                
+        elif direction == "SELL":
+            if last['bearish_ob']:
+                ob_fvg_score += 2
+                signals.append("📦 Bearish OB")
+            if last['fvg_down']:
+                ob_fvg_score += 1
+                signals.append("📉 Bearish FVG")
+            # Avoid trap signals
+            if last['trap_sell']:
+                ob_fvg_score -= 2
+                signals.append("⚠️ Sell Trap Detected")
+
+        score += ob_fvg_score
+
+        # 7. Range Compression Breakout Bonus
+        if detect_range_volume_trap(df):
+            score += 2
+            signals.append("💥 Range Breakout")
+
+        # Apply dynamic volatility adjustments
+        score += vol_adjustments['score_offset']
+        
+        # Accept median signals during big moves
+        if context_adjustments.get('accept_median_signals', False) and score >= 6:
+            score += 1
+            signals.append("🔥 Big Move Context")
+
         # SIDEWAYS MARKET PENALTY - Reduce score in choppy conditions
         if last['sideways_market']:
             score -= 2
@@ -309,6 +520,10 @@ def check_trade_quality(symbol, df):
     if df.empty or len(df) < 50:
         return None
 
+    # Session filter - only trade during active sessions
+    if not session_allows_entry():
+        return None
+
     # Prevent overtrading same pair
     now = datetime.utcnow()
     if symbol in last_trade_time:
@@ -316,13 +531,49 @@ def check_trade_quality(symbol, df):
         if time_diff < 2:  # Minimum 2 hours between trades on same pair
             return None
 
+    # Check for revenge trap patterns
+    if len(df) >= 10:
+        recent_candles = []
+        for i in range(-10, 0):
+            candle = {
+                'high': df.iloc[i]['high'],
+                'low': df.iloc[i]['low'],
+                'close': df.iloc[i]['close'],
+                'open': df.iloc[i]['open'],
+                'volume': df.iloc[i]['volume']
+            }
+            recent_candles.append(candle)
+        
+        if detect_revenge_trap(recent_candles):
+            return None
+
     try:
         last_row = df.iloc[-1]
         score, direction, signals = institutional_signal_score(df)
 
+        # Get dynamic volatility adjustments
+        vol_adjustments = adjust_filters_based_on_volatility(df)
+        dynamic_min_score = MIN_SIGNAL_STRENGTH + vol_adjustments['score_offset']
+        
         # Only take premium quality signals
-        if score < MIN_SIGNAL_STRENGTH or not direction:
+        if score < dynamic_min_score or not direction:
             return None
+
+        # Multi-timeframe confluence validation (Legacy)
+        if not boost_confluence(symbol, direction, FMP_API_KEY):
+            return None
+            
+        # SNIPER UPGRADE: Multi-timeframe confluence scoring
+        confluence_score, tf_signals = analyze_multi_timeframe_confluence(symbol, direction)
+        
+        # Dynamic confluence requirement based on available timeframes
+        min_confluence = max(3, len(tf_signals) * 1.5)  # Adaptive minimum
+        if confluence_score < min_confluence:
+            print(f"[SNIPER] {symbol}: Insufficient TF confluence ({confluence_score:.1f}/{min_confluence})")
+            return None
+            
+        # Add confluence signals to main signals
+        signals.extend([f"📊 TF Confluence: {confluence_score:.1f}"] + tf_signals[:3])  # Limit display
 
         entry_price = last_row['close']
         atr_value = last_row['atr']
@@ -343,12 +594,12 @@ def check_trade_quality(symbol, df):
             sl_price = entry_price + (atr_value * SL_MULTIPLIER)
             tp_price = entry_price - (atr_value * TP_MULTIPLIERS[risk_level])
 
-        # Risk-reward validation
+        # Dynamic risk-reward validation
         risk = abs(entry_price - sl_price)
         reward = abs(tp_price - entry_price)
         rr_ratio = reward / risk if risk > 0 else 0
 
-        if rr_ratio < 2.5:  # Minimum 1:2.5 RR
+        if rr_ratio < vol_adjustments['rr_min']:  # Dynamic RR requirement
             return None
 
         return {
@@ -412,11 +663,13 @@ def send_premium_signal(asset, signal_data):
 
 # ========== MAIN EXECUTION ==========
 
-print(f"🏆 INSTITUTIONAL TRADING SYSTEM")
+print(f"🎯 MULTI-TIMEFRAME SNIPER SYSTEM")
 print(f"📊 Monitoring {len(ASSETS)} premium pairs")
-print(f"⏰ Timeframe: {TF}")
+print(f"⏰ Primary TF: {TF} | Sniper TFs: {list(TIMEFRAMES.keys())}")
 print(f"🎯 Daily target: {MIN_DAILY_TRADES}-{MAX_DAILY_TRADES} quality trades")
 print(f"📈 Minimum signal strength: {MIN_SIGNAL_STRENGTH}/12")
+print(f"🔫 Multi-TF confluence required for entries")
+print(f"💎 Assets: {', '.join(ASSETS.values())}")
 
 # Test Telegram connection
 try:
@@ -491,10 +744,14 @@ while True:
             print(f"\n⏳ No institutional grade setups this scan")
 
         print(f"📈 Today's trades: {trades_today}/{MIN_DAILY_TRADES}-{MAX_DAILY_TRADES}")
-        print(f"⏱️ Next analysis in {SCAN_INTERVAL//60} minutes...")
+        print(f"🔫 Next sniper scan in {SCAN_INTERVAL//60} minutes...")
         print("-" * 60)
 
-        time.sleep(SCAN_INTERVAL)
+        # Progressive sleep with status updates
+        for i in range(SCAN_INTERVAL // 60):
+            time.sleep(60)
+            if (i + 1) % 2 == 0:  # Status every 2 minutes
+                print(f"⏱️  Scanning resumes in {(SCAN_INTERVAL//60) - (i+1)} minutes...")
 
     except KeyboardInterrupt:
         print("\n👋 Trading system stopped")
@@ -503,4 +760,3 @@ while True:
         print(f"\n🚨 System error: {str(e)}")
         print("🔄 Restarting in 60 seconds...")
         time.sleep(60)
-
