@@ -703,7 +703,7 @@ print("-" * 60)
 
 while True:
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Reset daily counter
         if now.date() != today_date:
