@@ -1,6 +1,6 @@
 
 import requests, time
-from datetime import datetime
+from datetime import datetime,timezone 
 import pandas as pd
 import numpy as np
 from ta.momentum import RSIIndicator, StochasticOscillator
@@ -52,7 +52,7 @@ TP_MULTIPLIERS = {
 }
 
 trades_today = 0
-today_date = datetime.utcnow().date()
+today_date = datetime.now(timezone.utc).date()
 last_trade_time = {}  # Prevent overtrading same pair
 
 # ========== INSTITUTIONAL FUNCTIONS ==========
@@ -525,7 +525,7 @@ def check_trade_quality(symbol, df):
         return None
 
     # Prevent overtrading same pair
-    now = datetime.utcnow()
+   now = datetime.now(timezone.utc)
     if symbol in last_trade_time:
         time_diff = (now - last_trade_time[symbol]).total_seconds() / 3600
         if time_diff < 2:  # Minimum 2 hours between trades on same pair
@@ -688,7 +688,7 @@ print("-" * 60)
 
 while True:
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Reset daily counter
         if now.date() != today_date:
