@@ -1,44 +1,44 @@
-#breakout_detector.py
+def detect_breakout(df):
+    if len(df) < 30:
+        return False, None
 
-import pandas as pd
+    recent = df.iloc[-2:]
+    prev_range = df['high'].rolling(20).max().iloc[-3]
+    prev_low = df['low'].rolling(20).min().iloc[-3]
 
-#=== Breakout Detection Module ===
+    if recent.iloc[-1]['close'] > prev_range:
+        return True, "BULLISH"
+    elif recent.iloc[-1]['close'] < prev_low:
+        return True, "BEARISH"
+    return False, None
 
-def detect_breakout(df): if df.empty or len(df) < 20: return False
+def detect_false_breakout(df):
+    if len(df) < 25:
+        return False
 
-last = df.iloc[-1]
-prev = df.iloc[-2]
+    last = df.iloc[-1]
+    prev = df.iloc[-2]
+    range_high = df['high'].rolling(20).max().iloc[-3]
+    range_low = df['low'].rolling(20).min().iloc[-3]
 
-# Detect if price has broken above resistance or below support with strong body
-breakout_up = last['close'] > df['resistance'].iloc[-2] * 1.002 and last['body_size'] > last['total_range'] * 0.6
-breakout_down = last['close'] < df['support'].iloc[-2] * 0.998 and last['body_size'] > last['total_range'] * 0.6
+    if (prev['close'] > range_high and last['close'] < range_high):
+        return True  # Bullish trap
+    if (prev['close'] < range_low and last['close'] > range_low):
+        return True  # Bearish trap
 
-return breakout_up or breakout_down
+    return False
 
-def detect_false_breakout(df): if df.empty or len(df) < 20: return False
+def confirm_breakout_strength(df):
+    last = df.iloc[-1]
+    body = abs(last['close'] - last['open'])
+    range_ = last['high'] - last['low']
+    vol_ratio = last['volume'] / df['volume'].rolling(20).mean().iloc[-1]
 
-last = df.iloc[-1]
-prev = df.iloc[-2]
-
-# Wick-only breakout reversal (false breakout)
-false_up = last['high'] > df['resistance'].iloc[-2] and last['close'] < prev['close']
-false_down = last['low'] < df['support'].iloc[-2] and last['close'] > prev['close']
-
-return false_up or false_down
-
-def confirm_breakout_strength(df): if df.empty or len(df) < 20: return 0
-
-last = df.iloc[-1]
-
-# Strength = volume + candle size + volatility alignment
-strength = 0
-if last['vol_ratio'] > 1.5:
-    strength += 1
-if last['body_size'] > last['total_range'] * 0.5:
-    strength += 1
-if last['volatility_spike']:
-    strength += 1
-if last['strong_trend']:
-    strength += 1
-
-return strength
+    score = 0
+    if body > range_ * 0.6:
+        score += 1
+    if vol_ratio > 1.5:
+        score += 1
+    if last['close'] > df['ema_8'].iloc[-1] or last['close'] < df['ema_8'].iloc[-1]:
+        score += 1
+    return score >= 2
