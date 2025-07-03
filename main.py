@@ -2,7 +2,7 @@ import requests
 
 # ✅ Your new Telegram bot credentials
 BOT_TOKEN = "7962012341:AAG1XJITypeyUkvo-K_2cM4cOqLa4c-Lx3s"
-CHAT_ID = "7962012341"
+CHAT_ID = "8006606779"
 
 def send_test_message():
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
