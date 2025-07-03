@@ -4,63 +4,54 @@ import os
 
 app = Flask(__name__)
 
-# === Telegram Bot Setup ===
-TELEGRAM_BOT_TOKEN = "7403427584:AAF5F0sZ4w5non_"
-TELEGRAM_CHAT_ID = "8006606779"
+# ✅ Replace with YOUR Telegram bot token and chat ID
+TELEGRAM_BOT_TOKEN = '7403427584:AAF5F0sZ4w5non_'
+TELEGRAM_CHAT_ID = '8006606779'
 
-def send_telegram_message(msg):
+def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": msg,
-        "parse_mode": "Markdown"
+        'chat_id': TELEGRAM_CHAT_ID,
+        'text': message,
+        'parse_mode': 'Markdown'
     }
-    requests.post(url, data=data)
+    response = requests.post(url, data=data)
+    return response
 
-# === Webhook Endpoint for TradingView ===
-@app.route('/webhook', methods=['POST'])
+@app.route('/', methods=['POST'])
 def webhook():
     data = request.get_json()
+    if not data:
+        return 'No data received', 400
 
-    signal = data.get("signal")
-    ticker = data.get("ticker")
-    price = float(data.get("price", 0))
-    confidence = data.get("confidence", "N/A")  # Optional field from TradingView alert
+    signal = data.get("signal", "UNKNOWN")
+    ticker = data.get("ticker", "UNKNOWN")
+    price = data.get("price", "N/A")
+    sl = data.get("sl", "N/A")
+    tp1 = data.get("tp1", "N/A")
+    tp2 = data.get("tp2", "N/A")
+    tp3 = data.get("tp3", "N/A")
+    confidence = data.get("confidence", "N/A")
+    market = data.get("market", "Active")  # Optional: "Sideways" flag
 
-    if not signal or not ticker or not price:
-        return "Invalid alert format", 400
-
-    # === SL & TP Calculation ===
-    rr_ratio = 2  # 1:2 risk
-    risk = price * 0.002  # 0.2% price risk - you can adjust this base
-
-    if signal.upper() == "BUY":
-        sl = price - risk * rr_ratio
-        tp1 = price + risk * 4
-        tp2 = price + risk * 5
-        tp3 = price + risk * 6
-    else:
-        sl = price + risk * rr_ratio
-        tp1 = price - risk * 4
-        tp2 = price - risk * 5
-        tp3 = price - risk * 6
-
-    # === Format Telegram Message ===
-    message = (
-        f"🚨 *TRADE ALERT*\n"
-        f"Asset: `{ticker}`\n"
-        f"Signal: *{signal.upper()}*\n"
-        f"Entry Price: `{round(price, 2)}`\n"
-        f"Stop Loss (1:2): `{round(sl, 2)}`\n"
-        f"Take Profit 1 (1:4): `{round(tp1, 2)}`\n"
-        f"Take Profit 2 (1:5): `{round(tp2, 2)}`\n"
-        f"Take Profit 3 (1:6): `{round(tp3, 2)}`\n"
-        f"Confidence: *{confidence}*"
-    )
-
+    message = f"""
+🚨 *AI Trading Alert*
+——————————————
+📉 *Signal:* `{signal}`
+📊 *Ticker:* `{ticker}`
+💵 *Price:* `{price}`
+🛡 *SL:* `{sl}`
+🎯 *TP1:* `{tp1}`
+🎯 *TP2:* `{tp2}`
+🎯 *TP3:* `{tp3}`
+📈 *Confidence:* `{confidence}`
+📍 *Market:* `{market}`
+——————————————
+⏰ Trade triggered by Ultra Precision Sniper AI
+"""
     send_telegram_message(message)
-    return "Alert processed", 200
+    return 'OK', 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host='0.0.0.0', port=port)
