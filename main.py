@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger("UltraSMC")
 
 # === Telegram Bot Config ===
-BOT_TOKEN = "7403427584:AAF5F0sZ4w5non_ 9WFHAN362-760e5dVZoO"
+BOT_TOKEN = "7403427584:AAF5F0sZ4w5non_9WFHAN362-760e5dVZoO"
 CHAT_ID = "8006606779"
 WEBHOOK_SECRET = "https://ai-trading-bot-production-fd12.up.railway.app/webhook"  # optional, can be empty
 
