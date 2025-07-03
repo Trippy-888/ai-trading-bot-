@@ -90,9 +90,9 @@ class SignalProcessor:
         self.telegram_bot.send_message(msg)
 
     def _format(self, s: TradingSignal) -> str:
-        emoji = "🟢" if s.action == "BUY" else "🔴"
-        rr = round((s.tp1 - s.price) / (s.price - s.sl), 2) if s.price != s.sl else 1
-        return f"""
+    emoji = "🟢" if s.action == "BUY" else "🔴"
+    rr = round((s.tp1 - s.price) / (s.price - s.sl), 2) if s.price != s.sl else 1
+    return f"""
 {emoji} <b>ULTRA PRECISION SMC SIGNAL</b> {emoji}
 
 📈 <b>{s.action}</b> <b>{s.ticker}</b> @ ${s.price:.2f}
