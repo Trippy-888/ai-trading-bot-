@@ -10,3 +10,5 @@ datetime
 schedule
 pyarrow
 python-dotenv
+fastapi
+uvicorn
