@@ -95,26 +95,26 @@ class SignalProcessor:
     confidence = "🔥" if s.score >= 15 else "⚡"
 
     return f"""
-{emoji} <b>ULTRA PRECISION SMC SIGNAL</b> {emoji}
+    {emoji} <b>ULTRA PRECISION SMC SIGNAL</b> {emoji}
 
-🚨 <b>Signal:</b> {s.action} | <b>{s.ticker}</b>
-💰 Entry: ${s.price:.2f}
-🛡️ Stop Loss: ${s.sl:.2f}
+    🚨 <b>Signal:</b> {s.action} | <b>{s.ticker}</b>
+    💰 Entry: ${s.price:.2f}
+    🛡️ Stop Loss: ${s.sl:.2f}
 
-🎯 Targets:
-TP1: ${s.tp1:.2f}
-TP2: ${s.tp2:.2f}
-TP3: ${s.tp3:.2f}
-TP4: ${s.tp4:.2f}
+    🎯 Targets:
+    TP1: ${s.tp1:.2f}
+    TP2: ${s.tp2:.2f}
+    TP3: ${s.tp3:.2f}
+    TP4: ${s.tp4:.2f}
 
-📊 Confidence: {confidence}
-📈 Score: {s.score}/20
-🧠 Confluence: {s.confluence}/10
-💎 Trap Zone: {"✅" if s.trap_zone else "❌"}
-📊 Volume Surge: {"✅" if s.volume_surge else "❌"}
-⚖️ R:R = {rr} | ATR: ${s.atr:.2f}
-🕐 Time: {s.timestamp}
-    """.strip()
+    📊 Confidence: {confidence}
+    📈 Score: {s.score}/20
+    🧠 Confluence: {s.confluence}/10
+    💎 Trap Zone: {"✅" if s.trap_zone else "❌"}
+    📊 Volume Surge: {"✅" if s.volume_surge else "❌"}
+    ⚖️ R:R = {rr} | ATR: ${s.atr:.2f}
+    🕐 Time: {s.timestamp}
+""".strip()
 
     def add(self, data):
         try:
