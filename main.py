@@ -178,19 +178,10 @@ def test():
             "trap_zone": True
         }
         ok = processor.add(sample)
-        logger.info(f"🔥 Test signal status: {'Success' if ok else 'Rejected'}")
-        return f"""
-        <html>
-            <body style="font-family:sans-serif; padding:20px;">
-                <h2>✅ TEST SIGNAL SENT</h2>
-                <p>Status: <strong>{'Success' if ok else 'Rejected'}</strong></p>
-                <p>Check your Telegram 📱</p>
-            </body>
-        </html>
-        """, 200
+        return f"Test signal {'sent ✅' if ok else 'rejected ❌'}", 200
     except Exception as e:
         logger.error(f"/test failed: {str(e)}")
-        return "❌ Internal Server Error", 500
+        return "Internal Server Error", 500
 
 # === Entry Point ===
 if __name__ == '__main__':
