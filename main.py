@@ -166,25 +166,31 @@ def webhook():
 
 @app.route('/test', methods=['GET', 'POST'])
 def test():
-    sample = {
-        "action": "BUY",
-        "ticker": "XAUUSD",
-        "price": 2322.50,
-        "atr": 8.5,
-        "score": 16.5,
-        "confluence": 9.3,
-        "volume_surge": True,
-        "trap_zone": True
-    }
-    ok = processor.add(sample)
-    return f"""
-    <h2>✅ TEST SIGNAL SENT</h2>
-    <p>Status: {'Success' if ok else 'Rejected'}</p>
-    <p>Check your Telegram now.</p>
-    """
-@app.route('/health')
-def health():
-    return jsonify({"status": "running"})
+    try:
+        sample = {
+            "action": "BUY",
+            "ticker": "XAUUSD",
+            "price": 2322.50,
+            "atr": 8.5,
+            "score": 16.5,
+            "confluence": 9.3,
+            "volume_surge": True,
+            "trap_zone": True
+        }
+        ok = processor.add(sample)
+        logger.info(f"🔥 Test signal status: {'Success' if ok else 'Rejected'}")
+        return f"""
+        <html>
+            <body style="font-family:sans-serif; padding:20px;">
+                <h2>✅ TEST SIGNAL SENT</h2>
+                <p>Status: <strong>{'Success' if ok else 'Rejected'}</strong></p>
+                <p>Check your Telegram 📱</p>
+            </body>
+        </html>
+        """, 200
+    except Exception as e:
+        logger.error(f"/test failed: {str(e)}")
+        return "❌ Internal Server Error", 500
 
 # === Entry Point ===
 if __name__ == '__main__':
