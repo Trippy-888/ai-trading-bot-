@@ -164,7 +164,7 @@ def webhook():
     accepted = processor.add(data)
     return jsonify({'status': 'success' if accepted else 'rejected'})
 
-@app.route('/test', methods=['POST'])
+@app.route('/test', methods=['GET', 'POST'])
 def test():
     sample = {
         "action": "BUY",
@@ -177,8 +177,11 @@ def test():
         "trap_zone": True
     }
     ok = processor.add(sample)
-    return jsonify({"test": "done", "status": "success" if ok else "fail"})
-
+    return f"""
+    <h2>✅ TEST SIGNAL SENT</h2>
+    <p>Status: {'Success' if ok else 'Rejected'}</p>
+    <p>Check your Telegram now.</p>
+    """
 @app.route('/health')
 def health():
     return jsonify({"status": "running"})
