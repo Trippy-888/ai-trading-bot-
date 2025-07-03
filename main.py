@@ -89,7 +89,7 @@ class SignalProcessor:
         msg = self._format(signal)
         self.telegram_bot.send_message(msg)
 
-    def _format(self, s: TradingSignal) -> str:
+def _format(self, s: TradingSignal) -> str:
     emoji = "🟢" if s.action == "BUY" else "🔴"
     rr = round((s.tp1 - s.price) / (s.price - s.sl), 2) if s.price != s.sl else 1
     confidence = "🔥" if s.score >= 15 else "⚡"
