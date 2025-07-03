@@ -10,7 +10,7 @@ import requests
 import threading
 from queue import Queue
 import time
-from dotenv import load_dotenv
+import os  # only this is enough
 
 # Load environment variables from .env file
 load_dotenv()
