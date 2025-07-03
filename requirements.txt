@@ -12,3 +12,4 @@ pyarrow
 python-dotenv
 fastapi
 uvicorn
+flask
