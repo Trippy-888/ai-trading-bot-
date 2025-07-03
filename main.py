@@ -3,7 +3,7 @@ import requests
 
 app = Flask(__name__)
 
-TELEGRAM_BOT_TOKEN = "7403427584:AAF5F0sZ4w5non_ 9WFHAN362-760e5dVZoO"
+TELEGRAM_BOT_TOKEN = "7403427584:AAF5F0sZ4w5non_9WFHAN362-760e5dVZoO"
 TELEGRAM_CHAT_ID = "8006606779"
 
 @app.route('/webhook', methods=['POST'])
