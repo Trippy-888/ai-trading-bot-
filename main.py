@@ -1,25 +1,20 @@
-from fastapi import FastAPI, Request
+from flask import Flask, request
 import requests
-import os
 
-app = FastAPI()
+app = Flask(__name__)
 
-# Get your Telegram bot token and chat ID from environment variables
-TELEGRAM_BOT_TOKEN = os.getenv("7403427584:AAF5F0sZ4w5non_ 9WFHAN362-760e5dVZoO")
-TELEGRAM_CHAT_ID = os.getenv("8006606779")
+TELEGRAM_BOT_TOKEN = "7403427584:AAF5F0sZ4w5non_ 9WFHAN362-760e5dVZoO"
+TELEGRAM_CHAT_ID = "8006606779"
 
-@app.post("/signal")
-async def receive_signal(request: Request):
-    data = await request.json()
-    message = f"📈 Trade Signal Received:\n\n{data}"
-    
-    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-        telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": message,
-            "parse_mode": "Markdown"
-        }
-        requests.post(telegram_url, data=payload)
-    
-    return {"status": "success"}
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.get_json()
+    message = data.get('message', '🚨 Alert Received')
+    requests.post(
+        f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage',
+        json={"chat_id": TELEGRAM_CHAT_ID, "text": message}
+    )
+    return 'OK', 200
+
+# ✅ THIS LINE IS REQUIRED ON RAILWAY
+app.run(host="0.0.0.0", port=8000)
