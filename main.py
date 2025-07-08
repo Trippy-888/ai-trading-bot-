@@ -75,10 +75,14 @@ class TelegramBot:
             logger.info(f"Message sent to Telegram successfully")
             return True
 
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             logger.error(f"Failed to send Telegram message: {str(e)}")
-            logger.error(f"Response status: {getattr(response, 'status_code', 'N/A')}")
-            logger.error(f"Response text: {getattr(response, 'text', 'N/A')}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response text: {e.response.text}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error sending Telegram message: {str(e)}")
             return False
 
     def send_alert(self, signal: TradingSignal) -> bool:
@@ -87,9 +91,8 @@ class TelegramBot:
             # Determine confidence emoji
             confidence_emoji = "🔥" if signal.confidence == "HIGH" else "⚡" if signal.confidence == "MEDIUM" else "⚠️"
             
-            # Format message
-            message = f"""
-🚨 <b>ULTRA PRECISION SMC {signal.action} SIGNAL</b> 🚨
+            # Format message with proper escaping
+            message = f"""🚨 <b>ULTRA PRECISION SMC {signal.action} SIGNAL</b> 🚨
 
 📈 <b>Ticker:</b> {signal.ticker}
 💰 <b>Entry:</b> ${signal.price:.4f}
@@ -109,8 +112,7 @@ class TelegramBot:
 📈 <b>Volume Surge:</b> {"✅" if signal.volume_surge else "❌"}
 📍 <b>ATR:</b> {signal.atr:.4f}
 
-⏰ <b>Time:</b> {signal.timestamp}
-"""
+⏰ <b>Time:</b> {signal.timestamp}"""
 
             return self.send_message(message.strip())
 
@@ -138,319 +140,133 @@ class AlertProcessor:
         self.is_running = False
         if self.processor_thread:
             self.processor_thread.join(timeout=5)
-        logger.info("Alert processor stopped")
-
-    def add_alert(self, alert_data: Dict[str, Any]) -> bool:
-        """Add alert to processing queue"""
-        try:
-            self.alert_queue.put(alert_data, timeout=1)
-            logger.info(f"Alert added to queue: {alert_data.get('ticker', 'Unknown')}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to add alert to queue: {str(e)}")
-            return False
 
     def _process_alerts(self):
-        """Process alerts from queue"""
+        """Process alerts from the queue"""
         while self.is_running:
             try:
                 if not self.alert_queue.empty():
-                    alert_data = self.alert_queue.get(timeout=1)
-                    self._handle_alert(alert_data)
+                    signal = self.alert_queue.get(timeout=1)
+                    logger.info(f"Processing alert for {signal.ticker}")
+                    
+                    if self.telegram_bot:
+                        self.telegram_bot.send_alert(signal)
+                    
+                    self.alert_queue.task_done()
                 else:
                     time.sleep(0.1)
             except Exception as e:
                 logger.error(f"Error processing alert: {str(e)}")
-                time.sleep(1)
 
-    def _handle_alert(self, alert_data: Dict[str, Any]):
-        """Handle individual alert"""
-        try:
-            # Parse alert data
-            signal = TradingSignal(
-                action=alert_data.get('action', ''),
-                ticker=alert_data.get('ticker', ''),
-                price=float(alert_data.get('price', 0)),
-                sl=float(alert_data.get('sl', 0)),
-                tp1=float(alert_data.get('tp1', 0)),
-                tp2=float(alert_data.get('tp2', 0)),
-                tp3=float(alert_data.get('tp3', 0)),
-                tp4=float(alert_data.get('tp4', 0)),
-                confidence=self._determine_confidence(float(alert_data.get('score', 0))),
-                timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC'),
-                atr=float(alert_data.get('atr', 0)),
-                volume_surge=alert_data.get('volume_surge', 'false').lower() == 'true',
-                trap_zone=alert_data.get('trap_zone', 'false').lower() == 'true',
-                score=float(alert_data.get('score', 0)),
-                confluence=float(alert_data.get('confluence', 0))
-            )
+    def add_alert(self, signal: TradingSignal):
+        """Add an alert to the processing queue"""
+        self.alert_queue.put(signal)
+        logger.info(f"Alert added to queue for {signal.ticker}")
 
-            # Log the signal
-            logger.info(f"Processing {signal.action} signal for {signal.ticker} at ${signal.price}")
-
-            # Send to Telegram if bot is configured
-            if self.telegram_bot:
-                success = self.telegram_bot.send_alert(signal)
-                if success:
-                    logger.info(f"Alert sent successfully for {signal.ticker}")
-                else:
-                    logger.error(f"Failed to send alert for {signal.ticker}")
-
-            # Store to file
-            self._store_signal(signal)
-
-        except Exception as e:
-            logger.error(f"Error handling alert: {str(e)}")
-
-    def _determine_confidence(self, score: float) -> str:
-        """Determine confidence level based on score"""
-        if score >= 15.0:
-            return "HIGH"
-        elif score >= 12.0:
-            return "MEDIUM"
-        else:
-            return "LOW"
-
-    def _store_signal(self, signal: TradingSignal):
-        """Store signal to JSON file"""
-        try:
-            # Create signals directory if it doesn't exist
-            os.makedirs('signals', exist_ok=True)
-            
-            # Prepare signal data
-            signal_data = {
-                'timestamp': signal.timestamp,
-                'action': signal.action,
-                'ticker': signal.ticker,
-                'price': signal.price,
-                'sl': signal.sl,
-                'tp1': signal.tp1,
-                'tp2': signal.tp2,
-                'tp3': signal.tp3,
-                'tp4': signal.tp4,
-                'confidence': signal.confidence,
-                'atr': signal.atr,
-                'volume_surge': signal.volume_surge,
-                'trap_zone': signal.trap_zone,
-                'score': signal.score,
-                'confluence': signal.confluence
-            }
-
-            # Save to daily file
-            date_str = datetime.now().strftime('%Y-%m-%d')
-            filename = f'signals/signals_{date_str}.json'
-
-            # Load existing data or create new
-            if os.path.exists(filename):
-                with open(filename, 'r') as f:
-                    data = json.load(f)
-            else:
-                data = []
-
-            # Add new signal
-            data.append(signal_data)
-
-            # Save back to file
-            with open(filename, 'w') as f:
-                json.dump(data, f, indent=2)
-
-            logger.info(f"Signal stored to {filename}")
-
-        except Exception as e:
-            logger.error(f"Failed to store signal: {str(e)}")
-
-# Initialize Flask app
+# Flask app
 app = Flask(__name__)
 
 # Initialize components
 telegram_bot = None
 alert_processor = None
 
-def initialize_telegram():
-    """Initialize Telegram bot if credentials are available"""
-    global telegram_bot
+def initialize_services():
+    """Initialize Telegram bot and alert processor"""
+    global telegram_bot, alert_processor
     
+    # Get environment variables
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
     chat_id = os.getenv('TELEGRAM_CHAT_ID')
     
-    if bot_token and chat_id and bot_token.strip() and chat_id.strip():
+    if bot_token and chat_id:
         telegram_bot = TelegramBot(bot_token, chat_id)
-        logger.info("✅ Telegram bot initialized successfully")
+        logger.info("Telegram bot initialized")
     else:
-        logger.info("ℹ️ Telegram credentials not configured. Telegram notifications disabled. (This is optional)")
-
-@app.route('/', methods=['GET'])
-def health_check():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'service': 'Ultra Precision SMC Alert Server',
-        'timestamp': datetime.now().isoformat(),
-        'telegram_enabled': telegram_bot is not None
-    })
+        logger.warning("Telegram credentials not found in environment variables")
+    
+    alert_processor = AlertProcessor(telegram_bot)
+    alert_processor.start()
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    """Webhook endpoint for TradingView alerts"""
+    """Handle incoming webhook alerts"""
     try:
         # Get JSON data from request
         data = request.get_json()
         
         if not data:
-            return jsonify({'error': 'No JSON data provided'}), 400
-
-        logger.info(f"Received webhook data: {data}")
-
-        # Validate required fields
-        required_fields = ['action', 'ticker', 'price']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'error': f'Missing required field: {field}'}), 400
-
-        # Add alert to processor
-        if alert_processor:
-            success = alert_processor.add_alert(data)
-            if success:
-                return jsonify({
-                    'status': 'success',
-                    'message': 'Alert received and queued for processing',
-                    'ticker': data.get('ticker'),
-                    'action': data.get('action')
-                })
-            else:
-                return jsonify({'error': 'Failed to queue alert'}), 500
-        else:
-            return jsonify({'error': 'Alert processor not initialized'}), 500
-
-    except Exception as e:
-        logger.error(f"Webhook error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/test', methods=['POST', 'GET'])
-def test_alert():
-    """Test endpoint for sending sample alerts"""
-    try:
-        # If GET request, return HTML page with test button
-        if request.method == 'GET':
-            return '''
-            <!DOCTYPE html>
-            <html>
-            <head><title>Test Alert</title></head>
-            <body>
-                <h2>🚀 Ultra Precision SMC Test Alert</h2>
-                <button onclick="sendTest()">Send Test Alert to Telegram</button>
-                <div id="result"></div>
-                <script>
-                    function sendTest() {
-                        fetch('/test', {method: 'POST'})
-                        .then(response => response.json())
-                        .then(data => {
-                            document.getElementById('result').innerHTML = 
-                                '<p style="color:green">✅ ' + data.message + '</p>';
-                        })
-                        .catch(error => {
-                            document.getElementById('result').innerHTML = 
-                                '<p style="color:red">❌ Error: ' + error + '</p>';
-                        });
-                    }
-                </script>
-            </body>
-            </html>
-            '''
+            return jsonify({"error": "No JSON data provided"}), 400
         
-        sample_data = {
-            'action': 'BUY',
-            'ticker': 'EURUSD',
-            'price': 1.0850,
-            'sl': 1.0820,
-            'tp1': 1.0880,
-            'tp2': 1.0910,
-            'tp3': 1.0940,
-            'tp4': 1.0970,
-            'atr': 0.0025,
-            'score': 16.5,
-            'confluence': 8.5,
-            'volume_surge': 'true',
-            'trap_zone': 'true'
+        logger.info(f"Received webhook data: {json.dumps(data, indent=2)}")
+        
+        # Parse the trading signal
+        signal = TradingSignal(
+            action=data.get('action', ''),
+            ticker=data.get('ticker', ''),
+            price=float(data.get('price', 0)),
+            sl=float(data.get('sl', 0)),
+            tp1=float(data.get('tp1', 0)),
+            tp2=float(data.get('tp2', 0)),
+            tp3=float(data.get('tp3', 0)),
+            tp4=float(data.get('tp4', 0)),
+            confidence=data.get('confidence', 'LOW'),
+            timestamp=data.get('timestamp', datetime.now().isoformat()),
+            atr=float(data.get('atr', 0)),
+            volume_surge=data.get('volume_surge', False),
+            trap_zone=data.get('trap_zone', False),
+            score=float(data.get('score', 0)),
+            confluence=float(data.get('confluence', 0))
+        )
+        
+        # Add to processing queue
+        if alert_processor:
+            alert_processor.add_alert(signal)
+        
+        return jsonify({"status": "success", "message": "Alert received and queued"}), 200
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {str(e)}")
+        return jsonify({"error": "Invalid JSON format"}), 400
+    except ValueError as e:
+        logger.error(f"Value error: {str(e)}")
+        return jsonify({"error": "Invalid data format"}), 400
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/test', methods=['GET'])
+def test():
+    """Test endpoint"""
+    return jsonify({"status": "ok", "message": "Trading alerts service is running"}), 200
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy",
+        "telegram_bot": telegram_bot is not None,
+        "alert_processor": alert_processor is not None and alert_processor.is_running
+    }), 200
+
+@app.route('/', methods=['GET'])
+def home():
+    """Root endpoint"""
+    return jsonify({
+        "service": "Trading Alerts Service",
+        "status": "running",
+        "endpoints": {
+            "/webhook": "POST - Receive trading signals",
+            "/test": "GET - Test endpoint",
+            "/health": "GET - Health check"
         }
-
-        if alert_processor:
-            success = alert_processor.add_alert(sample_data)
-            if success:
-                return jsonify({
-                    'status': 'success',
-                    'message': 'Test alert sent successfully'
-                })
-            else:
-                return jsonify({'error': 'Failed to send test alert'}), 500
-        else:
-            return jsonify({'error': 'Alert processor not initialized'}), 500
-
-    except Exception as e:
-        logger.error(f"Test alert error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/signals', methods=['GET'])
-def get_signals():
-    """Get recent signals"""
-    try:
-        date_str = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
-        filename = f'signals/signals_{date_str}.json'
-        
-        if os.path.exists(filename):
-            with open(filename, 'r') as f:
-                data = json.load(f)
-            return jsonify(data)
-        else:
-            return jsonify([])
-
-    except Exception as e:
-        logger.error(f"Error retrieving signals: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+    }), 200
 
 if __name__ == '__main__':
-    try:
-        # Initialize Telegram bot
-        initialize_telegram()
-        
-        # Initialize and start alert processor
-        alert_processor = AlertProcessor(telegram_bot)
-        alert_processor.start()
-        
-        logger.info("🚀 Ultra Precision SMC Alert Server starting...")
-        # Get port configuration
-        port = int(os.getenv('PORT', 5000))
-        
-        logger.info("📡 Webhook endpoint: /webhook")
-        logger.info("🧪 Test endpoint: /test")
-        logger.info("📊 Signals endpoint: /signals")
-        logger.info("🔍 Health check endpoint: /")
-        logger.info(f"🌐 Server will run on: http://0.0.0.0:{port}")
-        logger.info("✅ All systems ready!")
-        
-        # Send startup notification to Telegram
-        if telegram_bot:
-            startup_message = """
-🚀 <b>ULTRA PRECISION SMC SYSTEM STARTED</b> 🚀
+    logger.info("Starting Trading Alerts Service...")
+    
+    # Initialize services
+    initialize_services()
+    
+    # Start Flask app
+    app.run(host='0.0.0.0', port=5000, debug=False)
 
-✅ <b>Status:</b> Online and Scanning
-📡 <b>Webhook:</b> Ready for TradingView alerts
-🎯 <b>Monitoring:</b> Market signals active
-⏰ <b>Started:</b> """ + datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC') + """
-
-<i>System is now actively scanning for high-precision trading opportunities...</i>
-"""
-            telegram_bot.send_message(startup_message.strip())
-            logger.info("📱 Startup notification sent to Telegram")
-        
-        # Start Flask app
-        app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
-        
-    except KeyboardInterrupt:
-        logger.info("Shutting down server...")
-        if alert_processor:
-            alert_processor.stop()
-    except Exception as e:
-        logger.error(f"Server error: {str(e)}")
-        if alert_processor:
-            alert_processor.stop()
