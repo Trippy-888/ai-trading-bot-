@@ -8,8 +8,8 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Your Telegram Bot Configuration
-TELEGRAM_BOT_TOKEN = "7962012341:AAG1XJITypeyUkvo-K_2cM4cOqLa4c-Lx3s"
-TELEGRAM_CHAT_ID = "8006606779"
+TELEGRAM_BOT_TOKEN = os.getenv("7962012341:AAG1XJITypeyUkvo-K_2cM4cOqLa4c-Lx3s")
+TELEGRAM_CHAT_ID = os.getenv("8006606779")
 
 def send_telegram_message(message):
     """Send message to Telegram"""
