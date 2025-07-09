@@ -35,23 +35,35 @@ def format_alert_message(data):
     price = data.get('price', 'N/A')
     sl = data.get('sl', 'N/A')
     tp1 = data.get('tp1', 'N/A')
+    tp2 = data.get('tp2', 'N/A')
+    tp3 = data.get('tp3', 'N/A')
+    tp4 = data.get('tp4', 'N/A')
+    atr = data.get('atr', 'N/A')
     score = data.get('score', 'N/A')
     confluence = data.get('confluence', 'N/A')
     
     emoji = "🟢" if action == "BUY" else "🔴"
+    direction = "📈" if action == "BUY" else "📉"
     
     message = f"""
 {emoji} <b>SMC AI SNIPER ALERT</b> {emoji}
 
-<b>Action:</b> {action}
-<b>Ticker:</b> {ticker}
-<b>Price:</b> {price}
-<b>Stop Loss:</b> {sl}
-<b>Take Profit:</b> {tp1}
-<b>Score:</b> {score}
-<b>Confluence:</b> {confluence}
+{direction} <b>Action:</b> {action}
+🎯 <b>Ticker:</b> {ticker}
+💰 <b>Entry Price:</b> {price}
+🛡️ <b>Stop Loss:</b> {sl}
 
-<b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+🎯 <b>Take Profits:</b>
+   TP1: {tp1}
+   TP2: {tp2}
+   TP3: {tp3}
+   TP4: {tp4}
+
+📊 <b>ATR:</b> {atr}
+⭐ <b>Score:</b> {score}
+🔥 <b>Confluence:</b> {confluence}
+
+⏰ <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 🎯 Trade wisely and manage your risk!
 """
